@@ -14,10 +14,10 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
 
-    def connected_event_handler(self, bot):
-        bot.send_message("Hello everyone, my name is {0}.".format(bot.username))
+    def connected_event_handler(bot, raw_message):
+        bot.text_message("Hello everyone, my name is {0}.".format(bot.username))
         sleep(5)
-        bot.send_message("I am leaving now, goodbye.")
+        bot.text_message("I am leaving now, goodbye.")
         bot.disconnect()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
