@@ -13,13 +13,15 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
     import logging
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
-    
+
     def connected_event_handler(self, bot):
         bot.send_message("Hello everyone, my name is {0}.".format(bot.username))
         sleep(5)
         bot.send_message("I am leaving now, goodbye.")
         bot.disconnect()
-    
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
     bot_a = Mumpy(username="MyBot")
     bot_a.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
     bot_a.connect('localhost')  # port=64738 by default
@@ -27,15 +29,15 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
     bot_b = Mumpy(username="SomeOtherBot")
     bot_b.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
     bot_b.connect('localhost')
-    
+
     bots = []
     bots.append(bot_a)
     bots.append(bot_b)
-    
+
     while any(bot.is_alive() for bot in bots):
         logging.info("There is still at least one bot alive.")
         sleep(3)
-    
+
     logging.info("All bots have died!")
 
 ## Events
@@ -59,9 +61,9 @@ There are a number of different event types you can write handlers for.
 * MumpyEvent.USER_BANNED
     * Fired when anyone is banned from the server.
 * MumpyEvent.MESSAGE_RECEIVED
-    * Fired when a message is received.
+    * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT
-    * Fired when the client sends a message.
+    * Fired when the client sends a text message.
 * MumpyEvent.BANLIST_MODIFIED
     * Fired when the server's ban list is modified.
 
