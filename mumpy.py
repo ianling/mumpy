@@ -1,15 +1,20 @@
 from . import Mumble_pb2
-from .event_handler import EventHandler
 from .constants import *
+from .event_handler import EventHandler
+from .user import User
+from .varint import VarInt
 from enum import Enum
+from ocb.aes import AES
+from ocb import OCB
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
 import logging
+import opuslib
 import select
 import socket
 import struct
-
+import wave
 
 class MumpyEvent(Enum):
     CONNECTED = 'self_connected'
@@ -23,7 +28,8 @@ class MumpyEvent(Enum):
     MESSAGE_RECEIVED = 'message_received'
     MESSAGE_SENT = 'message_sent'
     BANLIST_MODIFIED = 'banlist_modified'
-
+    AUDIO_TRANSMISSION_RECEIVED = 'audio_transmission_received'
+    AUDIO_TRANSMISSION_SENT = 'audio_transmission_sent'
 
 class Mumpy:
     def __init__(self, username="mumble-bot", password=""):
@@ -35,6 +41,12 @@ class Mumpy:
         self.event_handlers = {}
         for event in MumpyEvent:
             self.event_handlers[event] = EventHandler()
+        self.audio_decoders = { AUDIO_TYPE_OPUS:    opuslib.Decoder(48000, 1)}
+        self.audio_encoders = { AUDIO_TYPE_OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+        self.preferred_audio_codec = AUDIO_TYPE_OPUS
+        self.audio_target = 0
+        self.audio_sequence_number = 0
+        self.sockets = []
 
 
     # message type 0
@@ -64,7 +76,31 @@ class Mumpy:
 
 
     # message type 1 -- UDPTunnel
-    # not used, no handler needed
+    def message_handler_UDPTunnel(self, payload):
+        header = struct.unpack('!B', payload[:1])[0]
+        audio_type = (header & 0b11100000) >> 5
+        target = header & 0b00011111
+        payload = payload[1:]
+        varint_reader = VarInt(payload)
+        session_id = varint_reader.read_next()  # the user that sent the voice transmission
+        sequence_number = varint_reader.read_next()
+        print(sequence_number)
+        if audio_type == AUDIO_TYPE_PING:
+            return
+        elif audio_type == AUDIO_TYPE_OPUS:
+            size = varint_reader.read_next()
+            if size & 0x2000:
+                terminate = True
+            else:
+                terminate = False
+            size = size & 0x1ff
+            voice_frame = varint_reader.get_current_data()[:size]  # anything left after size is position data
+            # TODO: Handle position data
+            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
+            self._handle_audio(session_id, sequence_number, terminate, pcm)
+        else:
+            print(type)
+
 
     # message type 2 -- Authenticate
     # not sent by server, no handler needed
@@ -129,14 +165,14 @@ class Mumpy:
         # murmur sends two UserRemove messages when someone is kicked or banned.
         # the first one contains the session, actor, reason, and ban fields.
         # the second message contains only the session ID of the victim.
-        # When someone leaves the server, only the second message is sent
+        # When someone simply leaves the server, only the second message is sent
         try:
-            session_username = self.users[message.session]['name']
+            session_username = self.users[message.session].name
             del(self.users[message.session])
         except:
             return
         if message.HasField('actor'):
-            actor_username = self.users[message.actor]['name']
+            actor_username = self.users[message.actor].name
             if message.ban:
                 action = "banned"
                 self._fire_event(MumpyEvent.USER_BANNED, message)
@@ -154,13 +190,10 @@ class Mumpy:
     def message_handler_UserState(self, payload):
         message = Mumble_pb2.UserState()
         message.ParseFromString(payload)
-        if message.session not in self.users:
-            self.users[message.session] = {}
-        updated_fields = message.ListFields()
-        for field, value in updated_fields:
-            self.users[message.session][field.name] = value
-        if 'channel_id' not in self.users[message.session]:
-            self.users[message.session]['channel_id'] = 0
+        try:
+            self.users[message.session].update(message)
+        except:
+            self.users[message.session] = User(message)
 
 
     # message type 10
@@ -169,6 +202,7 @@ class Mumpy:
         message.ParseFromString(payload)
         self.log.debug("Received message type 10")
         self.log.debug(message)
+        self._fire_event(MumpyEvent.BANLIST_MODIFIED, message)
 
 
     # message type 11
@@ -176,11 +210,11 @@ class Mumpy:
         message = Mumble_pb2.TextMessage()
         message.ParseFromString(payload)
         sender_id = message.actor
-        recipient = message.session
+        recipient_id = message.session
         channel_id = message.channel_id
         tree_id = message.tree_id
         message_body = message.message
-        self.log.debug('Text message from {} to {} (channel: {}, tree_id: {}): {}'.format(sender_id, recipient, channel_id, tree_id, message_body))
+        self.log.debug('Text message from {} to {} (channel: {}, tree_id: {}): {}'.format(sender_id, recipient_id, channel_id, tree_id, message_body))
         self._fire_event(MumpyEvent.MESSAGE_RECEIVED, message)
 
 
@@ -213,7 +247,67 @@ class Mumpy:
     def message_handler_CryptSetup(self, payload):
         message = Mumble_pb2.CryptSetup()
         message.ParseFromString(payload)
-        self.log.debug("Received message type 15 (CryptSetup)")
+        if message.HasField('key'):
+            self.encryption_key = message.key
+        if message.HasField('client_nonce'):
+            self.client_nonce = message.client_nonce
+        if message.HasField('server_nonce'):
+           self.server_nonce = message.server_nonce
+        aes = AES(128)
+        #self.decrypter = OCB(aes)
+        #self.decrypter.setKey(self.encryption_key)
+        #self.decrypter.setNonce(
+        self.encrypter = OCB(aes)
+        self.encrypter.setKey(self.encryption_key)
+        self._initialize_udp_socket()
+
+    # handles incoming audio transmissions
+    # session_id = (int) the sender of the audio
+    # sequence = (int) which chunk of audio in the sequence this is
+    # terminate = (boolean) True if this is the last chunk of audio in the sequence
+    # pcm = (byte) the raw PCM audio data (signed 16-bit 48000Hz)
+    def _handle_audio(self, session_id, sequence, terminate, pcm):
+        user = self.users[session_id]
+        user.audio_buffer += pcm
+        if terminate:
+            user.audio_log.append((time(), user.audio_buffer))
+            user.audio_buffer = b''
+            self._fire_event(MumpyEvent.AUDIO_TRANSMISSION_RECEIVED, user)
+
+
+    '''
+    Encrypts the data with OCB-AES128, using the key and nonce provided by the server.
+    '''
+    def _encrypt(self, data):
+        self.encrypter.setNonce(self.client_nonce)
+        tag, ciphertext = self.encrypter.encrypt(data, b'')
+        return bytes(ciphertext)
+
+
+    '''
+    The process for establishing the UDP connection is:
+    1. Client receives the CryptSetup message from the server, containing the encryption parameters
+    2. Client sends an encrypted UDP ping packet (header + varint-encoded timestamp)
+    3. Server echoes back the same data
+    '''
+    def _initialize_udp_socket(self):
+        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_ping_packet =  b'\x20' + VarInt(int(time())).encode()
+        self._send_packet_udp(udp_ping_packet)
+        self.udp_socket.settimeout(3)
+        try:
+            response = self.udp_socket.recvfrom(1)
+        except:
+            self.udp_socket.close()
+            self.log.warning("Timed out waiting for UDP ping response from server. Using TCP for audio traffic.")
+            print("key={}\ncnonce={}\nsnonce={}\nplaintext={}\nciphertext={}".format(self.encryption_key, self.client_nonce, self.server_nonce, udp_ping_packet, self._encrypt(udp_ping_packet)))
+            return
+        print("Got UDP response:")
+        print(response)
+
+
+    def _send_packet_udp(self, data):
+        self.udp_socket.sendto(self._encrypt(data), (self.address, self.port))
 
 
     def _start_connection_thread(self):
@@ -221,11 +315,12 @@ class Mumpy:
         sock.connect((self.address, self.port))
         ssl_context = SSLContext(PROTOCOL_TLS)
         self.ssl_socket = ssl_context.wrap_socket(sock)
+        self.sockets.append(self.ssl_socket)
         self.ping_thread = Thread(target=self._ping_thread)
         self.ping_thread.start()
         self.message_buffer = b""
         while self.connected:
-            inputs, outputs, exceptions = select.select([self.ssl_socket], [], [self.ssl_socket])
+            inputs, outputs, exceptions = select.select(self.sockets, [], self.sockets)
             for input in inputs:
                 try:
                     self.message_buffer += input.recv(4096)
@@ -245,6 +340,8 @@ class Mumpy:
 
                     if message_type == MESSAGE_TYPE_VERSION:
                         self.message_handler_Version(message_payload)
+                    elif message_type == MESSAGE_TYPE_UDPTUNNEL:
+                        self.message_handler_UDPTunnel(message_payload)
                     elif message_type == MESSAGE_TYPE_PING:
                         self.message_handler_Ping(message_payload)
                     elif message_type == MESSAGE_TYPE_REJECT:
@@ -277,7 +374,7 @@ class Mumpy:
             self._fire_event(MumpyEvent.DISCONNECTED)
 
 
-    def _fire_event(self, event_type, message=""):
+    def _fire_event(self, event_type, message=None):
         self.event_handlers[event_type](self, message)
 
     def _ping_thread(self):
@@ -318,15 +415,26 @@ class Mumpy:
         self.connection_thread.start()
         self.log.debug('Started connection thread')
 
+
+    '''
+    Closes the connection to the server.
+    '''
     def disconnect(self):
         self.ssl_socket.shutdown(socket.SHUT_RDWR)
         self.ssl_socket.close()
         self.connected = False
 
 
+    '''
+    Returns a dictionary of User objects and IDs in the form users[id] = User()
+    '''
     def get_users(self):
         return self.users
 
+
+    '''
+    Returns a dictionary of channel names and IDs in the form channels[id] = name
+    '''
     def get_channels(self):
         return self.channels
 
@@ -335,7 +443,7 @@ class Mumpy:
     Returns the ID of the channel the bot is currently in as an integer.
     '''
     def get_current_channel_id(self):
-        return self.users[self.session_id]['channel_id']
+        return self.users[self.session_id].channel_id
 
 
     '''
@@ -361,20 +469,23 @@ class Mumpy:
                 return id
         return False
 
-    '''
-    Returns the name of the user identified by id.
-    '''
-    def get_user_name_by_id(self, id):
-        return self.users[id]['name']
 
     '''
-    Returns the id of the user identified by name.
+    Returns the User identified by session_id.
     '''
-    def get_user_id_by_name(self, name):
-        for id, user in self.users.items():
-            if user['name'] == name:
-                return id
+    def get_user_by_id(self, session_id):
+        return self.users[session_id]
+
+
+    '''
+    Returns the User identified by name.
+    '''
+    def get_user_by_name(self, name):
+        for session_id, user in self.users.items():
+            if user.name == name:
+                return user
         return False
+
 
     '''
     Returns the bot's session ID.
@@ -382,30 +493,137 @@ class Mumpy:
     def get_current_user_id(self):
         return self.session_id
 
+
     '''
     Returns the bot's username.
     '''
     def get_current_username(self):
         return self.username
 
+
     '''
-    Kicks a user identified by id.
-    Bans the user if ban is True.
+    Kicks a User.
+    Bans the User if ban is True.
     '''
-    def kick_user_by_id(self, id, reason="", ban=False):
+    def kick_user(self, user, reason="", ban=False):
         kick_payload = Mumble_pb2.UserRemove()
-        kick_payload.session = id
+        kick_payload.session = user.session_id
         kick_payload.reason = reason
         kick_payload.ban = ban
         self._send_payload(MESSAGE_TYPE_USERREMOVE, kick_payload)
+
 
     '''
     Kicks a user identified by name.
     Bans the user if ban is True.
     '''
     def kick_user_by_name(self, name, reason="", ban=False):
-        id = self.get_user_id_by_name(name)
-        self.kick_user_by_id(id, reason=reason, ban=ban)
+        user = self.get_user_by_name(name)
+        self.kick_user(user, reason=reason, ban=ban)
+
+
+    '''
+    Returns a List of all the completed audio transmissions from the user identified by name.
+    Each element in the list is a byte string containing the raw PCM audio data from that transmission.
+    '''
+    def get_user_audio_log(self, name):
+        return self.get_user_by_name(name).audio_log
+
+
+    '''
+    Clears the audio log of a specific user identified by name.
+    '''
+    def clear_user_audio_log(self, name):
+        user = self.get_user_by_name(name)
+        user.audio_log = []
+
+
+    '''
+    Clears every user's audio log, removing all received audio transmissions from memory.
+    '''
+    def clear_all_audio_logs(self):
+        for session_id, user in self.users.items():
+            user.audio_log = []
+
+
+    '''
+    Converts the raw PCM audio data to WAV and saves it to a file.
+    '''
+    def export_to_wav(self, pcm, filename):
+        f = wave.open(filename, 'wb')
+        f.setnchannels(1)  # mono
+        f.setsampwidth(2)  # 16-bit
+        f.setframerate(48000) # 48KHz
+        f.writeframes(pcm)
+        f.close()
+
+
+    '''
+    Converts all audio logs from all users to WAV and saves them to separate files.
+    Clears all audio logs once the audio has been saved.
+    '''
+    def export_audio_logs_to_wav(self, folder='./'):
+        for session_id, user in self.users.items():
+            counter = 1
+            base_filename = folder + user.name + '_'
+            for timestamp, pcm in user.audio_log:
+                filename = base_filename + str(int(timestamp)) + '.wav'
+                self.export_to_wav(pcm, filename)
+                counter += 1
+            user.audio_log = []
+
+
+    '''
+    Sends a complete, unencrypted UDP audio packet to the server over the TCP socket.
+    '''
+    def _send_audio_packet_tcp(self, udppacket):
+        packet = struct.pack('!HL', MESSAGE_TYPE_UDPTUNNEL, len(udppacket)) + udppacket
+        try:
+            self.ssl_socket.send(packet)
+        except OSError as e:
+            return False
+
+
+    '''
+    Encodes raw PCM data using the preferred audio codec and transmits it to the server.
+    '''
+    def send_audio(self, pcm, sample_rate=48000, sample_width=2):
+        frame_size = int(sample_rate / 100)
+        frame_width = sample_width
+        encoded_audio = []
+        while len(pcm) > 0:
+            to_encode = pcm[:frame_size*frame_width]
+            pcm = pcm[frame_size*frame_width:]
+            encoded_audio.append(self.audio_encoders[self.preferred_audio_codec].encode(to_encode, frame_size))
+        header = struct.pack('!B', AUDIO_TYPE_OPUS << 5 | self.audio_target)
+        for frame in encoded_audio[:-1]:
+            sequence_number = VarInt(self.audio_sequence_number).encode()
+            # TODO: positional info. struct.pack('!fff', 1.0, 2.0, 3.0)
+            payload = VarInt(len(frame)).encode() + frame
+            udppacket = header + sequence_number + payload
+            self._send_audio_packet_tcp(udppacket)
+            self.audio_sequence_number += 1
+        # set the terminator bit for the last payload
+        sequence_number = VarInt(self.audio_sequence_number).encode()
+        payload = VarInt(len(frame) | 0x2000).encode() + frame
+        udppacket = header + sequence_number + payload
+        self._send_audio_packet_tcp(udppacket)
+        self.audio_sequence_number += 1
+        self._fire_event(MumpyEvent.AUDIO_TRANSMISSION_SENT)
+
+
+    '''
+    Reads the raw PCM data and then sends it as an audio transmission.
+    '''
+    def play_wav(self, filename):
+        f = wave.open(filename, 'rb')
+        total_frames = f.getnframes()
+        samples = f.readframes(total_frames)
+        freq = f.getframerate()
+        width = f.getsampwidth()
+        f.close()
+        self.send_audio(samples, freq, width)
+
 
     '''
     Sends a text message to each channel in the list channels, and to each user in the list users.
@@ -419,8 +637,9 @@ class Mumpy:
         if channels:
             message_payload.channel_id += channels
         if users:
-            message_payload.session += users
+            message_payload.session += [user.session_id for user in users]
         self._send_payload(MESSAGE_TYPE_TEXTMESSAGE, message_payload)
+        self._fire_event(MumpyEvent.MESSAGE_SENT, message_payload)
 
 
     '''
@@ -431,6 +650,7 @@ class Mumpy:
         ping_payload.timestamp = int(time())
         self._send_payload(MESSAGE_TYPE_PING, ping_payload)
         self.last_ping_time = ping_payload.timestamp
+
 
     '''
     Returns True if bot is connected to the server.

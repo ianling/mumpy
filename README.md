@@ -6,6 +6,10 @@ Mumpy is a work in progress. It will be fully compliant to the Mumble protocol, 
 
 It is event-driven, making it perfect for writing Mumble bots.
 
+## Requirements
+
+* opuslib (https://github.com/OnBeep/opuslib)
+
 ## Example
 
 Below is some basic code to get you started. It creates two bots, and adds a function to handle CONNECTED events to each. This function sends a message to the bot's current channel, then disconnects from the server after 5 seconds. Once all the bots have disconnected, execution ends.
@@ -13,7 +17,7 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
     import logging
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
-
+    
     def connected_event_handler(bot, raw_message):
         bot.text_message("Hello everyone, my name is {0}.".format(bot.username))
         sleep(5)
@@ -21,7 +25,7 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
         bot.disconnect()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
+    
     bot_a = Mumpy(username="MyBot")
     bot_a.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
     bot_a.connect('localhost')  # port=64738 by default
@@ -29,15 +33,15 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
     bot_b = Mumpy(username="SomeOtherBot")
     bot_b.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
     bot_b.connect('localhost')
-
+    
     bots = []
     bots.append(bot_a)
     bots.append(bot_b)
-
+    
     while any(bot.is_alive() for bot in bots):
         logging.info("There is still at least one bot alive.")
         sleep(3)
-
+    
     logging.info("All bots have died!")
 
 ## Events
@@ -64,6 +68,8 @@ There are a number of different event types you can write handlers for.
     * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT
     * Fired when the client sends a text message.
+* MumpyEvent.AUDIO_TRANSMISSION_RECEIVED
+    * Fired when the client has received a complete audio transmission from the server.
 * MumpyEvent.BANLIST_MODIFIED
     * Fired when the server's ban list is modified.
 
@@ -78,8 +84,8 @@ The Mumpy object exposes many different methods and attributes you can use to in
 * [bool] is_alive()
     * Returns True if the client is connected to a server.
 * [dict] get_users()
-    * All the users in the server.
-    * Example: bot.get_users()[id]["name"]
+    * Returns a dictionary of all the Users in the server, in the form: users[session_id] = User()
+    * Example: bot.get_users()[session_id].name
 * [dict] get_channels()
     * All the channels in the server.
     * Example: bot.get_channels()[id]["name"]
@@ -91,22 +97,30 @@ The Mumpy object exposes many different methods and attributes you can use to in
     * Returns the name of the client's current channel.
 * [int] get_current_channel_id()
     * Returns the id of the client's current channel.
-* [string] get_user_name_by_id(id)
-    * Returns the name of the user identified by _id_.
-* [int] get_user_id_by_name(username)
-    * Returns the session ID of the user identified by _username_.
+* [string] get_user_by_session_id(id)
+    * Returns the User object identified by _session_id_.
+* [int] get_user_by_name(username)
+    * Returns the User object identified by _username_.
 * [string] get_channel_name_by_id(id)
     * Returns the name of the channel identified by _id_.
 * [int] get_channel_id_by_name(channel_name)
     * Returns the channel ID of the channel identified by _channel_name_.
-* [void] kick_user_by_id(id, reason="", ban=False)
-    * Kicks the user identified by _id_. Bans the user if ban is True.
+* [void] kick_user(user, reason="", ban=False)
+    * Kicks the User from the server. Bans the user if ban is True.
 * [void] kick_user_by_name(username, reason="", ban=False)
-    * Kicks the user identified by _username_. Bans the user if ban is True.
+    * Kicks the User identified by _username_. Bans the user if ban is True.
 * [void] text_message(message, channels=[], users=[])
-    * Sends _message_ to each channel in _channels_, and each user in _users_. If no channels or users are provided, sends the message to the client's current channel.
+    * Sends _message_ to each channel in _channels_, and each User in _users_. If no channels or Users are provided, sends the message to the client's current channel.
+* [list] get_user_audio_log(User)
+    * Retrieves a list of all completed audio transmissions received from the User. Each element in the list is a byte string containing the raw PCM audio data from that transmission.
 
-## To-do
+## To-do (in order of priority)
 
-* Everything related to voice data, including UDP and TCP tunneling.
+* UDP connection
+* Allow sending other audio besides 48KHz 16-bit WAV/PCM
+* Add per-user audio storage limits
 * Handle remaining message types, add more event types
+* Comment text and comment picture request method
+* Receive audio from other codecs (only Opus is supported at the moment)
+* Mixdown audio
+* A better way to store audio than a list of potentially massive byte strings on each user
