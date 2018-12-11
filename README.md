@@ -8,7 +8,11 @@ It is event-driven, making it perfect for writing Mumble bots.
 
 ## Requirements
 
-* opuslib (https://github.com/OnBeep/opuslib)
+* Python 3.6+
+    * opuslib (https://github.com/OnBeep/opuslib)
+    * pycryptodome
+    * protobuf
+* libopus (for audio)
 
 ## Example
 
