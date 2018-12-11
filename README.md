@@ -14,7 +14,6 @@ It is event-driven, making it perfect for writing Mumble bots.
 
 Below is some basic code to get you started. It creates two bots, and adds a function to handle CONNECTED events to each. This function sends a message to the bot's current channel, then disconnects from the server after 5 seconds. Once all the bots have disconnected, execution ends.
 
-    import logging
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
     
@@ -23,23 +22,13 @@ Below is some basic code to get you started. It creates two bots, and adds a fun
         sleep(5)
         bot.text_message("I am leaving now, goodbye.")
         bot.disconnect()
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     
     bot_a = Mumpy(username="MyBot")
     bot_a.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
     bot_a.connect('localhost')  # port=64738 by default
-    sleep(1)
-    bot_b = Mumpy(username="SomeOtherBot")
-    bot_b.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
-    bot_b.connect('localhost')
     
-    bots = []
-    bots.append(bot_a)
-    bots.append(bot_b)
-    
-    while any(bot.is_alive() for bot in bots):
-        logging.info("There is still at least one bot alive.")
+    while bot.is_alive():
+        print("The bot is still alive.")
         sleep(3)
     
     logging.info("All bots have died!")
@@ -52,6 +41,10 @@ There are a number of different event types you can write handlers for.
     * Fired when the client has connected and authenticated successfully.
 * MumpyEvent.DISCONNECTED
     * Fired when the client has disconnected from the server. May be preceded by a USER_KICKED and a USER_BANNED event.
+* MumpyEvent.UDP_CONNECTED
+    * Fired when the client has successfully established a UDP connection to the server
+* MumpyEvent.UDP_DISCONNECTED
+    * Fired when the client has lost or intentionally ended the UDP connection. This implies that audio communications have changed back to using the TCP connection.
 * MumpyEvent.CHANNEL_ADDED
     * Fired when a channel is added to the server.
 * MumpyEvent.CHANNEL_REMOVED
@@ -64,6 +57,8 @@ There are a number of different event types you can write handlers for.
     * Fired when anyone is kicked from the server.
 * MumpyEvent.USER_BANNED
     * Fired when anyone is banned from the server.
+* MumpyEvent.USER_STATS_UPDATED
+    * Fired when updated stats about a user are received.
 * MumpyEvent.MESSAGE_RECEIVED
     * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT
@@ -116,11 +111,10 @@ The Mumpy object exposes many different methods and attributes you can use to in
 
 ## To-do (in order of priority)
 
-* UDP connection
+* Handle remaining message types, add more event types
+* Comment text and comment picture request method (RequestBlob)
+* Add class for Channel, similar to User class
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
-* Handle remaining message types, add more event types
-* Comment text and comment picture request method
-* Receive audio from other codecs (only Opus is supported at the moment)
 * Mixdown audio
 * A better way to store audio than a list of potentially massive byte strings on each user
