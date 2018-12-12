@@ -74,7 +74,7 @@ There are a number of different event types you can write handlers for.
 * MumpyEvent.AUDIO_DISABLED
     * Fired when the client disables audio processing. This happens when the client fails to initialize the chosen audio codec, or does not support any of the server's audio codecs.
 * MumpyEvent.AUDIO_ENABLED
-    * Fired when the client enables audio processing. This happens when the client initially connects to the server and successfully initializes an audio codec, and when  
+    * Fired when the client enables audio processing. This happens when the client initially connects to the server and successfully initializes an audio codec.
 * MumpyEvent.BANLIST_MODIFIED
     * Fired when the server's ban list is modified.
 
@@ -110,7 +110,7 @@ The Mumpy object exposes many different methods and attributes you can use to in
     * Returns the name of the channel identified by _id_.
 * [int] get_channel_id_by_name(channel_name)
     * Returns the channel ID of the channel identified by _channel_name_.
-* [void] kick_user(user, reason="", ban=False)
+* [void] kick_user(User, reason="", ban=False)
     * Kicks the User from the server. Bans the user if ban is True.
 * [void] kick_user_by_name(username, reason="", ban=False)
     * Kicks the User identified by _username_. Bans the user if ban is True.
