@@ -63,6 +63,8 @@ class MumpyEvent(metaclass=MumpyEnum):
     BANLIST_MODIFIED = 'banlist_modified'
     AUDIO_TRANSMISSION_RECEIVED = 'audio_transmission_received'
     AUDIO_TRANSMISSION_SENT = 'audio_transmission_sent'
+    AUDIO_DISABLED = 'audio_disabled'
+    AUDIO_ENABLED = 'audio_enabled'
 
 
 PROTOCOL_VERSION = (1, 2, 19)  # (major, minor, patch)

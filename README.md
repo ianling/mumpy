@@ -16,7 +16,7 @@ It is event-driven, making it perfect for writing Mumble bots.
 
 ## Example
 
-Below is some basic code to get you started. It creates two bots, and adds a function to handle CONNECTED events to each. This function sends a message to the bot's current channel, then disconnects from the server after 5 seconds. Once all the bots have disconnected, execution ends.
+Below is some basic code to get you started. It creates a bot and adds a function to handle CONNECTED events. This event handler function sends a text message to everyone in the bot's current channel, then disconnects from the server after 5 seconds. Once all the bot has disconnected, execution ends.
 
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
@@ -62,13 +62,19 @@ There are a number of different event types you can write handlers for.
 * MumpyEvent.USER_BANNED
     * Fired when anyone is banned from the server.
 * MumpyEvent.USER_STATS_UPDATED
-    * Fired when updated stats about a user are received.
+    * Fired when updated stats about a user are received. This happens after the client specifically requests stats about a user.
 * MumpyEvent.MESSAGE_RECEIVED
     * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT
     * Fired when the client sends a text message.
 * MumpyEvent.AUDIO_TRANSMISSION_RECEIVED
     * Fired when the client has received a complete audio transmission from the server.
+* MumpyEvent.AUDIO_TRANSMISSION_SENT
+    * Fired when the client has sent a complete audio transmission to the server.
+* MumpyEvent.AUDIO_DISABLED
+    * Fired when the client disables audio processing. This happens when the client fails to initialize the chosen audio codec, or does not support any of the server's audio codecs.
+* MumpyEvent.AUDIO_ENABLED
+    * Fired when the client enables audio processing. This happens when the client initially connects to the server and successfully initializes an audio codec, and when  
 * MumpyEvent.BANLIST_MODIFIED
     * Fired when the server's ban list is modified.
 
@@ -115,8 +121,8 @@ The Mumpy object exposes many different methods and attributes you can use to in
 
 ## To-do (in order of priority)
 
-* Handle remaining message types, add more event types
 * Comment text and comment picture request method (RequestBlob)
+* Add remaining client protobuf message types (including ContextActionModify and ContextAction)
 * Add class for Channel, similar to User class
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits

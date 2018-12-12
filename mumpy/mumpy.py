@@ -43,12 +43,9 @@ class Mumpy:
                                  MessageType.ACL:           self.message_handler_ACL,
                                  MessageType.QUERYUSERS:    self.message_handler_QueryUsers,
                                  MessageType.CRYPTSETUP:    self.message_handler_CryptSetup,
-                                 # MessageType.CONTEXTACTIONMODIFY: self.message_handler_ContextActionModify,
-                                 # MessageType.CONTEXTACTION: self.message_handler_ContextAction,
-                                 # MessageType.USERLIST: self.message_handler_UserList,
-                                 # MessageType.VOICETARGET: self.message_handler_VoiceTarget,
-                                 # MessageType.PERMISSIONQUERY: self.message_handler_PermissionQuery,
-                                 # MessageType.CODECVERSION: self.message_handler_CodecVersion,
+                                 MessageType.USERLIST: self.message_handler_UserList,
+                                 MessageType.PERMISSIONQUERY: self.message_handler_PermissionQuery,
+                                 MessageType.CODECVERSION: self.message_handler_CodecVersion,
                                  MessageType.USERSTATS:     self.message_handler_UserStats,
                                  MessageType.SERVERCONFIG:  self.message_handler_ServerConfig,
                                  MessageType.SUGGESTCONFIG: self.message_handler_SuggestConfig,
@@ -61,10 +58,10 @@ class Mumpy:
         self.log = None
         self.tcp_connection_thread = None
         self.udp_connection_thread = None
-        # TODO: wrap this in a try/except to make sure they have opus stuff installed. disable audio if they don't
-        self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}
-        self.audio_encoders = {AudioType.OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+        self.audio_enabled = False
         self.preferred_audio_codec = AudioType.OPUS
+        self.audio_decoders = None
+        self.audio_encoders = None
         self.audio_target = 0
         self.audio_sequence_number = 0
         self.connected = False
@@ -252,8 +249,43 @@ class Mumpy:
             self.server_nonce = message.server_nonce
         self.crypto = MumbleCrypto(self.encryption_key, self.client_nonce, self.server_nonce)
 
+    # message type 16 -- ContextActionModify
+    # not sent by server, no handler needed
+    # TODO: handle sending these to the server, what does this do?
+
+    # message type 17 -- ContextAction
+    # not sent by server, no handler needed
+    # TODO: handle sending these to the server, what does this do?
+
+    # message type 18
+    def message_handler_UserList(self, payload):
+        message = mumble_pb2.UserList()
+        message.ParseFromString(payload)
+        # TODO: do something with this information. This message contains the list of registered users on the server
+
+    # message type 19 -- VoiceTarget
+    # not sent by server, no handler needed
+    # TODO: handle sending these to the server
+
+    # message type 20
+    def message_handler_PermissionQuery(self, payload):
+        # TODO: handle sending these to the server
+        message = mumble_pb2.PermissionQuery()
+        message.ParseFromString(payload)
+        self.channels[message.channel_id]['permissions'] = message.permissions
+
+    # message type 21
+    def message_handler_CodecVersion(self, payload):
+        message = mumble_pb2.CodecVersion()
+        message.ParseFromString(payload)
+        if not message.opus:
+            self.audio_enabled = False
+            self.log.warning("Server does not support Opus, disabling audio")
+            self._fire_event(MumpyEvent.AUDIO_DISABLED)
+
     # message type 22
     def message_handler_UserStats(self, payload):
+        # TODO: Send these to the server to give server your stats? Documentation on this feature is unclear
         message = mumble_pb2.UserStats()
         message.ParseFromString(payload)
         user = self.get_user_by_id(message.session)
@@ -446,6 +478,14 @@ class Mumpy:
         self.address = address
         self.port = port
         self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
+        try:
+            self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}
+            self.audio_encoders = {AudioType.OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+            self.audio_enabled = True
+            self._fire_event(MumpyEvent.AUDIO_ENABLED)
+        except Exception:
+            self.log.warning('Failed to initialize Opus audio codec. Disabling audio')
+            self._fire_event(MumpyEvent.AUDIO_DISABLED)
         self.connected = True
         self.tcp_connection_thread = Thread(target=self._start_tcp_connection)
         self.tcp_connection_thread.start()
