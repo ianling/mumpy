@@ -19,6 +19,7 @@ class User(dict):
 
     # uses a protobuf message to update the object's fields
     def update(self, message, prefix=None):
+        print(message)
         updated_fields = message.ListFields()
         for field, value in updated_fields:
             if prefix is None:

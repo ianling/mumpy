@@ -730,3 +730,14 @@ class Mumpy:
         message_payload = mumble_pb2.UserStats()
         message_payload.session = user.session_id
         self._send_payload(MessageType.USERSTATS, message_payload)
+
+    def request_blob(self, sessions=None, channels=None):
+        message_payload = mumble_pb2.RequestBlob()
+        if sessions is not None:
+            for session in sessions:
+                message_payload.session_texture.append(session)
+                message_payload.session_comment.append(session)
+        if channels is not None:
+            for channel in channels:
+                message_payload.channel_description.append(channel)
+        self._send_payload(MessageType.REQUESTBLOB, message_payload)
