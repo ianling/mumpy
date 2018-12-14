@@ -191,9 +191,55 @@ class Mumpy:
         message = mumble_pb2.UserState()
         message.ParseFromString(payload)
         try:
-            self.get_user_by_id(message.session).update(message)
+            user = self.get_user_by_id(message.session)
+            message_fields = message.ListFields()
+            events_to_fire = []
+            fields_changed = [field.name for field, value in message_fields]
+            for field_changed in fields_changed:
+                if field_changed == 'comment':
+                    events_to_fire.append(MumpyEvent.USER_COMMENT_UPDATED)
+                elif field_changed == 'texture':
+                    events_to_fire.append(MumpyEvent.USER_AVATAR_UPDATED)
+                elif field_changed == 'user_id':
+                    events_to_fire.append(MumpyEvent.USER_REGISTERED)
+                elif field_changed == 'self_mute':
+                    if user.self_mute == message.self_mute:
+                        # they didn't change this field.
+                        # Murmur sends both the self_mute and self_deaf fields, even if only one changed.
+                        # Murmur oddly does not send both fields if an admin mutes or deafens a user.
+                        continue
+                    elif message.self_mute:
+                        events_to_fire.append(MumpyEvent.USER_SELF_MUTED)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_SELF_UNMUTED)
+                elif field_changed == 'self_deaf':
+                    if user.self_deaf == message.self_deaf:
+                        continue
+                    elif message.self_deaf:
+                        events_to_fire.append(MumpyEvent.USER_SELF_DEAFENED)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_SELF_UNDEAFENED)
+                elif field_changed == 'mute':
+                    if message.mute:
+                        events_to_fire.append(MumpyEvent.USER_MUTED)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_UNMUTED)
+                elif field_changed == 'deaf':
+                    if message.deaf:
+                        events_to_fire.append(MumpyEvent.USER_DEAFENED)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_UNDEAFENED)
+                elif field_changed == 'recording':
+                    if message.recording:
+                        events_to_fire.append(MumpyEvent.USER_RECORDING)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_STOPPED_RECORDING)
+            user.update(message)
+            for event_type in events_to_fire:
+                self._fire_event(event_type, message)
         except Exception:
             self.users[message.session] = User(message)
+            self._fire_event(MumpyEvent.USER_CONNECTED, message)
 
     # message type 10
     def message_handler_BanList(self, payload):
@@ -445,6 +491,7 @@ class Mumpy:
             self._fire_event(MumpyEvent.DISCONNECTED)
 
     def _fire_event(self, event_type, message=None):
+        self.log.debug(f"Firing event type {event_type}")
         self.event_handlers[event_type](self, message)
 
     def _ping_thread(self):

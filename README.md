@@ -63,6 +63,12 @@ There are a number of different event types you can write handlers for.
     * Fired when anyone is banned from the server.
 * MumpyEvent.USER_STATS_UPDATED
     * Fired when updated stats about a user are received. This happens after the client specifically requests stats about a user.
+* MumpyEvent.USER_REGISTERED
+    * Fired when a user registers on the server.
+* MumpyEvent.USER_COMMENT_UPDATED
+    * Fired when a user changes their comment.
+* MumpyEvent.USER_AVATAR_UPDATED
+    * Fired when a user changes their avatar.
 * MumpyEvent.MESSAGE_RECEIVED
     * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT

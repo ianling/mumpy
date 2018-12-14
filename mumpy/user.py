@@ -8,7 +8,10 @@ class User(dict):
         self.update(message)
 
     def __getattr__(self, attr):
-        return self[attr]
+        try:
+            return self[attr]
+        except KeyError:
+            return None
 
     def __setattr__(self, attr, value):
         self[attr] = value
@@ -17,8 +20,13 @@ class User(dict):
     def session_id(self):
         return self.session
 
-    # uses a protobuf message to update the object's fields
     def update(self, message, prefix=None):
+        """
+        Uses a protobuf message to update the object's fields.
+        prefix determines the top-level attribute to store the fields in.
+
+        Example: <User>.update(message, prefix="stats") will store all the fields in message at <User>.stats.*
+        """
         print(message)
         updated_fields = message.ListFields()
         for field, value in updated_fields:
