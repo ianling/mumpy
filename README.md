@@ -69,6 +69,16 @@ There are a number of different event types you can write handlers for.
     * Fired when a user changes their comment.
 * MumpyEvent.USER_AVATAR_UPDATED
     * Fired when a user changes their avatar.
+* MumpyEvent.USER_SELF_MUTED / USER_SELF_UNMUTED
+    * Fired when a user mutes or unmutes themselves.
+* MumpyEvent.USER_SELF_DEAFENED / USER_SELF_UNDEAFENED
+    * Fired when a user deafens or undeafens themselves.
+* MumpyEvent.USER_MUTED / USER_UNMUTED
+    * Fired when a user is muted / unmuted server side (e.g. by a server admin).
+* MumpyEvent.USER_DEAFENED / USER_UNDEAFENED
+    * Fired when a user is deafened / undeafened server side (e.g. by a server admin).
+* MumpyEvent.USER_RECORDING / USER_STOPPED_RECORDING
+    * Fired when a user starts / stops recording.
 * MumpyEvent.MESSAGE_RECEIVED
     * Fired when a text message is received.
 * MumpyEvent.MESSAGE_SENT
