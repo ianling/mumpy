@@ -114,24 +114,24 @@ The Mumpy object exposes many different methods and attributes you can use to in
     * Returns the client's current username.
 * [int] get_current_user_id()
     * Returns the client's current user session ID.
-* [string] get_current_channel_name()
-    * Returns the name of the client's current channel.
+* [string] get_current_channel()
+    * Returns the client's current Channel.
 * [int] get_current_channel_id()
     * Returns the id of the client's current channel.
-* [string] get_user_by_session_id(id)
-    * Returns the User object identified by _session_id_.
+* [string] get_user_by_id(id)
+    * Returns the User object identified by the session ID _id_.
 * [int] get_user_by_name(username)
     * Returns the User object identified by _username_.
-* [string] get_channel_name_by_id(id)
-    * Returns the name of the channel identified by _id_.
-* [int] get_channel_id_by_name(channel_name)
-    * Returns the channel ID of the channel identified by _channel_name_.
+* [string] get_channel_by_id(id)
+    * Returns the Channel identified by _id_.
+* [int] get_channel_by_name(channel_name)
+    * Returns the Channel identified by _channel_name_.
 * [void] kick_user(User, reason="", ban=False)
     * Kicks the User from the server. Bans the user if ban is True.
 * [void] kick_user_by_name(username, reason="", ban=False)
     * Kicks the User identified by _username_. Bans the user if ban is True.
 * [void] text_message(message, channels=[], users=[])
-    * Sends _message_ to each channel in _channels_, and each User in _users_. If no channels or Users are provided, sends the message to the client's current channel.
+    * Sends _message_ to each Channel in _channels_, and each User in _users_. If no Channels or Users are provided, sends the message to the client's current channel.
 * [list] get_user_audio_log(User)
     * Retrieves a list of all completed audio transmissions received from the User. Each element in the list is a byte string containing the raw PCM audio data from that transmission.
 
@@ -139,7 +139,6 @@ The Mumpy object exposes many different methods and attributes you can use to in
 
 * Comment text and comment picture request method (RequestBlob)
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
-* Add class for Channel, similar to User class
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
 * Mixdown audio
