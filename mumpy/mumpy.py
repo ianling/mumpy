@@ -141,6 +141,7 @@ class Mumpy:
             channel_name = self.get_channel_by_id(message.channel_id).name
             self.log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
             del(self.channels[message.channel_id])
+            self._fire_event(MumpyEvent.CHANNEL_REMOVED, message)
         except Exception:
             pass
 
@@ -151,8 +152,10 @@ class Mumpy:
         try:
             channel = self.get_channel_by_id(message.channel_id)
             channel.update(message)
+            self._fire_event(MumpyEvent.CHANNEL_UPDATED, message)  # TODO: be more specific
         except Exception:
             self.channels[message.channel_id] = Channel(message)
+            self._fire_event(MumpyEvent.CHANNEL_ADDED, message)
 
     # message type 8
     def message_handler_UserRemove(self, payload):

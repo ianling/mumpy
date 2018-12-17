@@ -52,6 +52,7 @@ class MumpyEvent(metaclass=MumpyEnum):
     UDP_CONNECTED = 'udp_connected'
     UDP_DISCONNECTED = 'udp_disconnected'
     CHANNEL_ADDED = 'channel_added'
+    CHANNEL_UPDATED = 'channel_updated'
     CHANNEL_REMOVED = 'channel_removed'
     USER_CONNECTED = 'user_connected'
     USER_DISCONNECTED = 'user_disconnected'

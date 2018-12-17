@@ -51,6 +51,8 @@ There are a number of different event types you can write handlers for.
     * Fired when the client has lost or intentionally ended the UDP connection. This implies that audio communications have changed back to using the TCP connection.
 * MumpyEvent.CHANNEL_ADDED
     * Fired when a channel is added to the server.
+* MumpyEvent.CHANNEL_UPDATED
+    * Fired when a channel is updated or modified in some way.
 * MumpyEvent.CHANNEL_REMOVED
     * Fired when a channel is removed from the server.
 * MumpyEvent.USER_CONNECTED
@@ -109,7 +111,7 @@ The Mumpy object exposes many different methods and attributes you can use to in
     * Example: bot.get_users()[session_id].name
 * [dict] get_channels()
     * All the channels in the server.
-    * Example: bot.get_channels()[id]["name"]
+    * Example: bot.get_channels()[id].name
 * [string] get_current_username()
     * Returns the client's current username.
 * [int] get_current_user_id()
