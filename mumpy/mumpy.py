@@ -1,6 +1,4 @@
-import sys
-import traceback
-
+from mumpy.channel import Channel
 from . import mumble_pb2
 from .constants import MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING, RELEASE_STRING,\
     OS_STRING, PING_INTERVAL
@@ -16,6 +14,7 @@ import opuslib
 import select
 import socket
 import struct
+import traceback
 import wave
 
 
@@ -139,7 +138,7 @@ class Mumpy:
         message = mumble_pb2.ChannelRemove()
         message.ParseFromString(payload)
         try:
-            channel_name = self.get_channel_name_by_id(message.channel_id)
+            channel_name = self.get_channel_by_id(message.channel_id).name
             self.log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
             del(self.channels[message.channel_id])
         except Exception:
@@ -149,11 +148,11 @@ class Mumpy:
     def message_handler_ChannelState(self, payload):
         message = mumble_pb2.ChannelState()
         message.ParseFromString(payload)
-        if message.channel_id not in self.channels:
-            self.channels[message.channel_id] = {}
-        updated_fields = message.ListFields()
-        for field, value in updated_fields:
-            self.channels[message.channel_id][field.name] = value
+        try:
+            channel = self.get_channel_by_id(message.channel_id)
+            channel.update(message)
+        except Exception:
+            self.channels[message.channel_id] = Channel(message)
 
     # message type 8
     def message_handler_UserRemove(self, payload):
@@ -205,8 +204,8 @@ class Mumpy:
                 elif field_changed == 'self_mute':
                     if user.self_mute == message.self_mute:
                         # they didn't change this field.
-                        # Murmur sends both the self_mute and self_deaf fields, even if only one changed.
-                        # Murmur oddly does not send both fields if an admin mutes or deafens a user.
+                        # Murmur oddly sends both the self_mute and self_deaf fields, even if only one changed.
+                        # Murmur does not send both fields if an admin mutes or deafens a user.
                         continue
                     elif message.self_mute:
                         events_to_fire.append(MumpyEvent.USER_SELF_MUTED)
@@ -566,27 +565,27 @@ class Mumpy:
         """
         Returns the ID of the channel the bot is currently in as an integer.
         """
-        return self.users[self.session_id].channel_id
+        return self.get_user_by_id(self.session_id).channel_id
 
-    def get_current_channel_name(self):
+    def get_current_channel(self):
         """
-        Returns the name of the channel the bot is currently in as a string.
+        Returns the Channel the bot is currently in.
         """
-        return self.get_channel_name_by_id(self.get_current_channel_id())
+        return self.get_channel_by_id(self.get_current_channel_id())
 
-    def get_channel_name_by_id(self, channel_id):
+    def get_channel_by_id(self, channel_id):
         """
-        Returns the name of the channel identified by id.
+        Returns the Channel identified by id.
         """
-        return self.channels[channel_id]['name']
+        return self.channels[channel_id]
 
-    def get_channel_id_by_name(self, name):
+    def get_channel_by_name(self, name):
         """
-        Returns the id of the channel identified by name.
+        Returns the Channel identified by name.
         """
         for channel_id, channel in self.channels.items():
-            if channel['name'] == name:
-                return channel_id
+            if channel.name == name:
+                return channel
         raise IndexError(f"Channel with the specified name does not exist: {name}")
 
     def get_user_by_id(self, session_id):
@@ -602,7 +601,7 @@ class Mumpy:
         for session_id, user in self.users.items():
             if user.name == name:
                 return user
-        return False
+        raise IndexError(f"User with the specified name does not exist: {name}")
 
     def get_current_user_id(self):
         """
