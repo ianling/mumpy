@@ -1,5 +1,9 @@
+import weakref
+
+
 class MumbleProtocolObject(dict):
-    def __init__(self, message):
+    def __init__(self, server, message):
+        self._server = weakref.proxy(server)
         self.update(message)
 
     def __getattr__(self, attr):

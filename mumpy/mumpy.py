@@ -1,11 +1,11 @@
 from mumpy.channel import Channel
-from . import mumble_pb2
-from .constants import MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING, RELEASE_STRING,\
+from mumpy import mumble_pb2
+from mumpy.constants import MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING, RELEASE_STRING,\
     OS_STRING, PING_INTERVAL
-from .event_handler import EventHandler
-from .mumblecrypto import MumbleCrypto
-from .user import User
-from .varint import VarInt
+from mumpy.event_handler import EventHandler
+from mumpy.mumblecrypto import MumbleCrypto
+from mumpy.user import User
+from mumpy.varint import VarInt
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
@@ -17,8 +17,6 @@ import struct
 import traceback
 import wave
 
-
-# TODO: add function to manually kill UDP connection and switch back to TCP
 
 class Mumpy:
     def __init__(self, username="mumble-bot", password=""):
@@ -154,7 +152,7 @@ class Mumpy:
             channel.update(message)
             self._fire_event(MumpyEvent.CHANNEL_UPDATED, message)  # TODO: be more specific
         except Exception:
-            self.channels[message.channel_id] = Channel(message)
+            self.channels[message.channel_id] = Channel(self, message)
             self._fire_event(MumpyEvent.CHANNEL_ADDED, message)
 
     # message type 8
@@ -240,7 +238,7 @@ class Mumpy:
             for event_type in events_to_fire:
                 self._fire_event(event_type, message)
         except Exception:
-            self.users[message.session] = User(message)
+            self.users[message.session] = User(self, message)
             self._fire_event(MumpyEvent.USER_CONNECTED, message)
 
     # message type 10
@@ -437,13 +435,17 @@ class Mumpy:
         self.use_udp = True
         self.log.debug("Using UDP for audio traffic")
         self._fire_event(MumpyEvent.UDP_CONNECTED)
-
         while self.use_udp:
             inputs, outputs, exceptions = select.select([self.udp_socket], [], [])
             for input_socket in inputs:
-                udp_message_buffer, sender = input_socket.recvfrom(2048)
+                try:
+                    udp_message_buffer, sender = input_socket.recvfrom(2048)
+                except OSError:
+                    self.log.debug("UDP socket died, switching to TCP")
+                    self.use_udp = False
+                    continue
                 if len(udp_message_buffer) == 0:  # connection closed by server
-                    self.log.error("UDP socket returned 0 bytes, closing connection")
+                    self.log.debug("UDP socket returned 0 bytes, closing connection and switching to TCP")
                     self.use_udp = False
                     continue
                 try:
@@ -458,6 +460,7 @@ class Mumpy:
         self.udp_socket.sendto(self._encrypt(data), (self.address, self.port))
 
     def _start_tcp_connection(self):
+        self.log.debug(f"Connecting to {self.address}:{self.port}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((self.address, self.port))
         ssl_context = SSLContext(PROTOCOL_TLS)
@@ -471,10 +474,14 @@ class Mumpy:
                 try:
                     self.tcp_message_buffer += input_socket.recv(4096)
                 except OSError:
-                    self.log.error("TCP socket died")
-                if len(self.tcp_message_buffer) == 0:  # connection closed by server
-                    self.log.error("TCP socket returned 0 bytes, closing connection")
+                    self.log.debug("TCP socket died")
                     self.connected = False
+                    continue
+                if len(self.tcp_message_buffer) == 0:  # connection closed by server
+                    self.log.debug("TCP socket returned 0 bytes, closing connection")
+                    self.connected = False
+                    continue
+
                 while len(self.tcp_message_buffer) >= 6:  # message header present
                     message_type = int.from_bytes(self.tcp_message_buffer[0:2], byteorder='big')
                     message_length = int.from_bytes(self.tcp_message_buffer[2:6], byteorder='big')
@@ -514,7 +521,7 @@ class Mumpy:
     def add_event_handler(self, event_type, function_handle):
         """
         Adds the function as a handler for the specified event type.
-        Example: my_mumpy.add_event_handler(EVENT_USER_KICKED, kickHandlerFunction)
+        Example: bot.add_event_handler(MumpyEvent.USER_KICKED, kickHandlerFunction)
         """
         self.event_handlers[event_type].append(function_handle)
 
@@ -538,19 +545,26 @@ class Mumpy:
         self.connected = True
         self.tcp_connection_thread = Thread(target=self._start_tcp_connection)
         self.tcp_connection_thread.start()
-        self.log.debug('Started connection thread')
 
     def disconnect(self):
         """
         Closes the connection to the server.
         """
-        self.ssl_socket.shutdown(socket.SHUT_RDWR)
-        self.ssl_socket.close()
-        if self.udp_socket is not None:
-            self.udp_socket.shutdown(socket.SHUT_RDWR)
-            self.udp_socket.close()
         self.connected = False
         self.use_udp = False
+        try:
+            self.ssl_socket.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        finally:
+            self.ssl_socket.close()
+        if self.udp_socket is not None:
+            try:
+                self.udp_socket.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            finally:
+                self.udp_socket.close()
 
     def get_users(self):
         """
