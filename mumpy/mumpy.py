@@ -804,3 +804,68 @@ class Mumpy:
             for channel in channels:
                 message_payload.channel_description.append(channel)
         self._send_payload(MessageType.REQUESTBLOB, message_payload)
+
+    def join_channel(self, channel):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = self.session_id
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def register_user(self, user):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.user_id = 0
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def register_self(self):
+        self.register_user(self.get_user_by_id(self.session_id))
+
+    def mute_user(self, user):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.mute = True
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def deafen_user(self, user):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.deaf = True
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def unmute_user(self, user):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.mute = False
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def undeafen_user(self, user):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.deaf = False
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def mute_self(self):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = self.session_id
+        message_payload.self_mute = True
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def deafen_self(self):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = self.session_id
+        message_payload.self_deaf = True
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def unmute_self(self):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = self.session_id
+        message_payload.self_mute = False
+        message_payload.mute = False
+        self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def undeafen_self(self):
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = self.session_id
+        message_payload.self_deaf = False
+        message_payload.deaf = False
+        self._send_payload(MessageType.USERSTATE, message_payload)
