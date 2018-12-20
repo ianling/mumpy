@@ -315,9 +315,11 @@ class Mumpy:
 
     # message type 20
     def message_handler_PermissionQuery(self, payload):
-        # TODO: handle sending these to the server
         message = mumble_pb2.PermissionQuery()
         message.ParseFromString(payload)
+        if message.flush:
+            for channel in self.channels.values():
+                channel.permissions = None
         self.channels[message.channel_id]['permissions'] = message.permissions
 
     # message type 21
