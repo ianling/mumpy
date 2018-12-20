@@ -741,7 +741,10 @@ class Mumpy:
         sequence_number = VarInt(self.audio_sequence_number).encode()
         payload = VarInt(len(frame) | 0x2000).encode() + frame
         udp_packet = header + sequence_number + payload
-        self._send_audio_packet_tcp(udp_packet)
+        if self.use_udp:
+            self._send_packet_udp(udp_packet)
+        else:
+            self._send_audio_packet_tcp(udp_packet)
         self.audio_sequence_number += 1
         self._fire_event(MumpyEvent.AUDIO_TRANSMISSION_SENT)
 
