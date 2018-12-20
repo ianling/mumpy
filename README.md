@@ -141,7 +141,6 @@ The Mumpy object exposes many different methods and attributes you can use to in
 
 ## To-do (in order of priority)
 
-* Comment text and comment picture request method (RequestBlob)
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
