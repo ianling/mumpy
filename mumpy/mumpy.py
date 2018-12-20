@@ -323,7 +323,8 @@ class Mumpy:
         if message.flush:
             for channel in self.channels.values():
                 channel.permissions = None
-        self.channels[message.channel_id]['permissions'] = message.permissions
+        self.get_channel_by_id(message.channel_id).permissions = message.permissions
+        self._fire_event(MumpyEvent.CHANNEL_PERMISSIONS_UPDATED, message)
 
     # message type 21
     def message_handler_CodecVersion(self, payload):
@@ -535,7 +536,9 @@ class Mumpy:
         """
         Connects starts the connection thread that connects to address:port.
         address is a string containing either an IP address, FQDN, hostname, etc.
-        port is the TCP port that the server is running on (64738 by default)
+        port is the TCP port that the server is running on (64738 by default).
+        certfile, keyfile, and keypassword should be set if you want to use a particular SSL certificate when
+        connecting to the server.
         """
         self.address = address
         self.port = port
@@ -629,7 +632,7 @@ class Mumpy:
                 return user
         raise IndexError(f"User with the specified name does not exist: {name}")
 
-    def get_current_user_id(self):
+    def get_current_session_id(self):
         """
         Returns the bot's session ID.
         """
@@ -640,6 +643,12 @@ class Mumpy:
         Returns the bot's username.
         """
         return self.username
+
+    def get_self_user(self):
+        """
+        Returns the bot's User object.
+        """
+        return self.get_user_by_id(self.session_id)
 
     def kick_user(self, user, reason="", ban=False):
         """
@@ -802,69 +811,129 @@ class Mumpy:
         return self.connected
 
     def update_user_stats(self, user):
+        """
+        Queries the server for a User's stats.
+        This function does not return anything. The server's response may fire the following events:
+         - USER_STATS_UPDATED
+        """
         message_payload = mumble_pb2.UserStats()
         message_payload.session = user.session_id
         self._send_payload(MessageType.USERSTATS, message_payload)
 
-    def request_blob(self, textures=[], comments=[], channel_descriptions=[]):
+    def request_blob(self, user_textures=[], user_comments=[], channel_descriptions=[]):
+        """
+        Queries the server for the full contents of a User's texture or comment, or a Channel's description.
+        This function does not return anything. The server's response may fire the following events:
+         - USER_COMMENT_UPDATED
+         - USER_TEXTURE_UPDATED
+         - CHANNEL_UPDATED
+        :param user_textures: (iterable) a list of Users to retrieve textures for
+        :param user_comments: (iterable) a list of Users to retrieve comments for
+        :param channel_descriptions: (iterable) a list of Channels to retrieve descriptions for
+        """
         message_payload = mumble_pb2.RequestBlob()
-        message_payload.session_texture.extend(textures)
-        message_payload.session_comment.extend(comments)
+        message_payload.session_texture.extend(user_textures)
+        message_payload.session_comment.extend(user_comments)
         message_payload.channel_description.extend(channel_descriptions)
         self._send_payload(MessageType.REQUESTBLOB, message_payload)
 
+    def move_user_to_channel(self, users, channel):
+        """
+        Moves each User in users to the specified Channel.
+        :param users: (iterable) a list of Users to move
+        :param channel: (Channel) the channel to move the Users to
+        """
+        for user in users:
+            message_payload = mumble_pb2.UserState()
+            message_payload.session = user.session_id
+            message_payload.channel_id = channel.id
+            self._send_payload(MessageType.USERSTATE, message_payload)
+
     def join_channel(self, channel):
-        message_payload = mumble_pb2.UserState()
-        message_payload.session = self.session_id
-        message_payload.channel_id = channel.id
-        self._send_payload(MessageType.USERSTATE, message_payload)
+        """
+        Moves the Mumpy instance to the specified Channel.
+        :param channel: (Channel) the channel to move to
+        """
+        self.move_user_to_channel(self.get_self_user(), channel)
 
     def register_user(self, user):
+        """
+        Registers a User on the server.
+        :param user: (User) the User to register
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = user.session_id
         message_payload.user_id = 0
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def register_self(self):
+        """
+        Registers the Mumpy instance on the server.
+        """
         self.register_user(self.get_user_by_id(self.session_id))
 
     def mute_user(self, user):
+        """
+        Mutes a user on the server.
+        :param user: (User) the user to mute
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = user.session_id
         message_payload.mute = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def deafen_user(self, user):
+        """
+        Deafens a user on the server.
+        :param user: (User) the user to deafen
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = user.session_id
         message_payload.deaf = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def unmute_user(self, user):
+        """
+        Unmutes a user on the server.
+        :param user: (User) the user to unmute
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = user.session_id
         message_payload.mute = False
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def undeafen_user(self, user):
+        """
+        Undeafens a user on the server.
+        :param user: (User) the user to undeafen
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = user.session_id
         message_payload.deaf = False
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def mute_self(self):
+        """
+        Mutes the Mumpy instance on the server.
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = self.session_id
         message_payload.self_mute = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def deafen_self(self):
+        """
+        Deafens the Mumpy instance on the server.
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = self.session_id
         message_payload.self_deaf = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def unmute_self(self):
+        """
+        Unmutes the Mumpy instance on the server.
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = self.session_id
         message_payload.self_mute = False
@@ -872,6 +941,9 @@ class Mumpy:
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def undeafen_self(self):
+        """
+        Undeafens the Mumpy instance on the server.
+        """
         message_payload = mumble_pb2.UserState()
         message_payload.session = self.session_id
         message_payload.self_deaf = False
@@ -879,6 +951,12 @@ class Mumpy:
         self._send_payload(MessageType.USERSTATE, message_payload)
 
     def get_channel_permissions(self, channel):
+        """
+        Retrieves the Mumpy instance's permissions in the specified Channel.
+        This function does not return anything. The server's response may fire the following events:
+         - CHANNEL_PERMISSIONS_UPDATED
+        :param channel: (Channel) the Channel to retrieve permissions for
+        """
         message_payload = mumble_pb2.PermissionQuery()
         message_payload.channel_id = channel.id
         self._send_payload(MessageType.PERMISSIONQUERY, message_payload)

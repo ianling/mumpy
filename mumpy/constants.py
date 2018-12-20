@@ -78,6 +78,7 @@ class MumpyEvent(metaclass=MumpyEnum):
     CHANNEL_ADDED = 'channel_added'
     CHANNEL_UPDATED = 'channel_updated'
     CHANNEL_REMOVED = 'channel_removed'
+    CHANNEL_PERMISSIONS_UPDATED = 'channel_permissions_updated'
     USER_CONNECTED = 'user_connected'
     USER_DISCONNECTED = 'user_disconnected'
     USER_KICKED = 'user_kicked'

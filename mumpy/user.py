@@ -15,10 +15,10 @@ class User(MumbleProtocolObject):
         return self.session
 
     def update_texture(self):
-        self._server.request_blob(textures=[self.session_id])
+        self._server.request_blob(user_textures=[self.session_id])
 
     def update_comment(self):
-        self._server.request_blob(comments=[self.session_id])
+        self._server.request_blob(user_comments=[self.session_id])
 
     def get_channel(self):
         return self._server.get_channel_by_id(self.channel_id)

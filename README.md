@@ -55,6 +55,8 @@ There are a number of different event types you can write handlers for.
     * Fired when a channel is updated or modified in some way.
 * MumpyEvent.CHANNEL_REMOVED
     * Fired when a channel is removed from the server.
+* MumpyEvent.CHANNEL_PERMISSIONS_UPDATED
+    * Fired when the Mumpy instance's permissions in a channel have changed.
 * MumpyEvent.USER_CONNECTED
     * Fired when someone else connects to the server.
 * MumpyEvent.USER_DISCONNECTED
