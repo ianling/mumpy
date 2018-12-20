@@ -42,7 +42,7 @@ class Mumpy:
                                  MessageType.CRYPTSETUP:    self.message_handler_CryptSetup,
                                  MessageType.USERLIST:      self.message_handler_UserList,
                                  MessageType.PERMISSIONQUERY: self.message_handler_PermissionQuery,
-                                 MessageType.CODECVERSION: self.message_handler_CodecVersion,
+                                 MessageType.CODECVERSION:  self.message_handler_CodecVersion,
                                  MessageType.USERSTATS:     self.message_handler_UserStats,
                                  MessageType.SERVERCONFIG:  self.message_handler_ServerConfig,
                                  MessageType.SUGGESTCONFIG: self.message_handler_SuggestConfig,
@@ -150,7 +150,7 @@ class Mumpy:
         try:
             channel = self.get_channel_by_id(message.channel_id)
             channel.update(message)
-            self._fire_event(MumpyEvent.CHANNEL_UPDATED, message)  # TODO: be more specific
+            self._fire_event(MumpyEvent.CHANNEL_UPDATED, message)  # TODO: be more specific, what changed?
         except Exception:
             self.channels[message.channel_id] = Channel(self, message)
             self._fire_event(MumpyEvent.CHANNEL_ADDED, message)
@@ -342,7 +342,6 @@ class Mumpy:
 
     # message type 23 -- RequestBlob
     # not sent by server, no handler needed
-    # TODO: handle sending these to the server
 
     # message type 24
     def message_handler_ServerConfig(self, payload):
