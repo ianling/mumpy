@@ -172,7 +172,6 @@ class Mumpy:
             self.connected = False
         try:
             session_username = self.get_user_by_id(message.session).name
-            del(self.users[message.session])
         except Exception:
             return
         if message.HasField('actor'):
@@ -185,6 +184,7 @@ class Mumpy:
                 self._fire_event(MumpyEvent.USER_KICKED, message)
             log_message = f"{actor_username} {action} {session_username} (Reason: {message.reason})"
         else:
+            del(self.users[message.session])
             log_message = f"{session_username} left the server"
             self._fire_event(MumpyEvent.USER_DISCONNECTED, message)
         self.log.debug(log_message)
@@ -806,15 +806,11 @@ class Mumpy:
         message_payload.session = user.session_id
         self._send_payload(MessageType.USERSTATS, message_payload)
 
-    def request_blob(self, sessions=None, channels=None):
+    def request_blob(self, textures=[], comments=[], channel_descriptions=[]):
         message_payload = mumble_pb2.RequestBlob()
-        if sessions is not None:
-            for session in sessions:
-                message_payload.session_texture.append(session)
-                message_payload.session_comment.append(session)
-        if channels is not None:
-            for channel in channels:
-                message_payload.channel_description.append(channel)
+        message_payload.session_texture.extend(textures)
+        message_payload.session_comment.extend(comments)
+        message_payload.channel_description.extend(channel_descriptions)
         self._send_payload(MessageType.REQUESTBLOB, message_payload)
 
     def join_channel(self, channel):

@@ -13,3 +13,12 @@ class User(MumbleProtocolObject):
     @property
     def session_id(self):
         return self.session
+
+    def update_texture(self):
+        self._server.request_blob(textures=[self.session_id])
+
+    def update_comment(self):
+        self._server.request_blob(comments=[self.session_id])
+
+    def get_channel(self):
+        return self._server.get_channel_by_id(self.channel_id)
