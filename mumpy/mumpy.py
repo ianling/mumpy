@@ -1,7 +1,7 @@
 from mumpy.channel import Channel
 from mumpy import mumble_pb2
-from mumpy.constants import MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING, RELEASE_STRING,\
-    OS_STRING, PING_INTERVAL
+from mumpy.constants import MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING,\
+    RELEASE_STRING, OS_STRING, PING_INTERVAL
 from mumpy.event_handler import EventHandler
 from mumpy.mumblecrypto import MumbleCrypto
 from mumpy.user import User
@@ -40,7 +40,7 @@ class Mumpy:
                                  MessageType.ACL:           self.message_handler_ACL,
                                  MessageType.QUERYUSERS:    self.message_handler_QueryUsers,
                                  MessageType.CRYPTSETUP:    self.message_handler_CryptSetup,
-                                 MessageType.USERLIST: self.message_handler_UserList,
+                                 MessageType.USERLIST:      self.message_handler_UserList,
                                  MessageType.PERMISSIONQUERY: self.message_handler_PermissionQuery,
                                  MessageType.CODECVERSION: self.message_handler_CodecVersion,
                                  MessageType.USERSTATS:     self.message_handler_UserStats,
@@ -79,7 +79,7 @@ class Mumpy:
         message.ParseFromString(payload)
         server_version = struct.unpack('>HBB', struct.pack('>I', message.version))
         self.log.debug('Server version: {}.{}.{}'.format(*server_version))
-        if PROTOCOL_VERSION[0] == server_version[0] and PROTOCOL_VERSION[1] == server_version[1]:
+        if PROTOCOL_VERSION[0] == server_version[0] and PROTOCOL_VERSION[1] >= server_version[1]:
             self.log.debug('Sending our version: {}.{}.{}...'.format(*PROTOCOL_VERSION))
             version_response = mumble_pb2.Version()
             version_response.version = struct.unpack('>I', struct.pack('>HBB', *PROTOCOL_VERSION))[0]
@@ -762,9 +762,9 @@ class Mumpy:
         if len(channels) == 0 and len(users) == 0:
             message_payload.channel_id.append(self.get_current_channel_id())
         if channels:
-            message_payload.channel_id += channels
+            message_payload.channel_id.extend([channel.id for channel in channels])
         if users:
-            message_payload.session += [user.session_id for user in users]
+            message_payload.session.extend([user.session_id for user in users])
         self._send_payload(MessageType.TEXTMESSAGE, message_payload)
         self._fire_event(MumpyEvent.MESSAGE_SENT, message_payload)
 
@@ -869,3 +869,8 @@ class Mumpy:
         message_payload.self_deaf = False
         message_payload.deaf = False
         self._send_payload(MessageType.USERSTATE, message_payload)
+
+    def get_channel_permissions(self, channel):
+        message_payload = mumble_pb2.PermissionQuery()
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.PERMISSIONQUERY, message_payload)
