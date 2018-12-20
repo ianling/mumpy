@@ -52,6 +52,9 @@ class Mumpy:
             self.event_handlers[event] = EventHandler()
         self.address = None
         self.port = None
+        self.certfile = None
+        self.keyfile = None
+        self.keypassword = None
         self.log = None
         self.tcp_connection_thread = None
         self.udp_connection_thread = None
@@ -465,6 +468,8 @@ class Mumpy:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((self.address, self.port))
         ssl_context = SSLContext(PROTOCOL_TLS)
+        if self.certfile is not None:
+            ssl_context.load_cert_chain(self.certfile, keyfile=self.keyfile, password=self.keypassword)
         self.ssl_socket = ssl_context.wrap_socket(sock)
         self.ping_thread = Thread(target=self._ping_thread)
         self.ping_thread.start()
@@ -526,7 +531,7 @@ class Mumpy:
         """
         self.event_handlers[event_type].append(function_handle)
 
-    def connect(self, address, port=64738):
+    def connect(self, address, port=64738, certfile=None, keyfile=None, keypassword=None):
         """
         Connects starts the connection thread that connects to address:port.
         address is a string containing either an IP address, FQDN, hostname, etc.
@@ -534,6 +539,9 @@ class Mumpy:
         """
         self.address = address
         self.port = port
+        self.certfile = certfile
+        self.keyfile = keyfile
+        self.keypassword = keypassword
         self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
         try:
             self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}

@@ -22,16 +22,16 @@ Below is some basic code to get you started. It creates a bot and adds a functio
     from time import sleep
     
     def connected_event_handler(bot, raw_message):
-        bot.text_message("Hello everyone, my name is {0}.".format(bot.username))
+        bot.text_message("Hello everyone, I just connected. My name is {0}.".format(bot.username))
         sleep(5)
         bot.text_message("I am leaving now, goodbye.")
         bot.disconnect()
     
-    bot_a = Mumpy(username="MyBot")
-    bot_a.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
-    bot_a.connect('localhost')  # port=64738 by default
+    my_bot = Mumpy(username="MyBot")
+    my_bot.add_event_handler(MumpyEvent.CONNECTED, connected_event_handler)
+    my_bot.connect('localhost')  # port=64738 by default
     
-    while bot.is_alive():
+    while my_bot.is_alive():
         print("The bot is still alive.")
         sleep(3)
     
@@ -100,8 +100,10 @@ There are a number of different event types you can write handlers for.
 
 The Mumpy object exposes many different methods and attributes you can use to interact with the server and other clients.
 
-* [void] connect(address, port=64738)
-    * Connects to _address_:_port_.
+* [void] connect(address, port=64738, certfile=None, keyfile=None, keypassword=None)
+    * Connects to _address_:_port_. Specify certfile, keyfile, and (optionally) keypassword to load an SSL certificate. 
+    * To generate a self-signed SSL certificate and key, you can run a command like: 
+      `openssl req -newkey rsa:2048 -nodes -keyout mumpy_key.pem -x509 -days 2000 -out mumpy_certificate.pem`
 * [void] disconnect()
     * Disconnects from the server.
 * [bool] is_alive()
