@@ -22,3 +22,6 @@ class User(MumbleProtocolObject):
 
     def get_channel(self):
         return self._server.get_channel_by_id(self.channel_id)
+
+    def clear_audio_log(self):
+        self.audio_log = []

@@ -3,6 +3,9 @@ import platform
 
 
 class MumpyEnum(type):
+    """
+    Very barebones enum. Simply allows you to iterate through all of the values in the enum.
+    """
     def __iter__(self):
         for attr in dir(self):
             if not attr.startswith("__"):
@@ -62,7 +65,7 @@ class Permission(metaclass=MumpyEnum):
     ALL = 0xf07ff
 
 
-class AudioType:
+class AudioType(metaclass=MumpyEnum):
     CELT_ALPHA = 0
     PING = 1
     SPEEX = 2
@@ -100,6 +103,7 @@ class MumpyEvent(metaclass=MumpyEnum):
     MESSAGE_RECEIVED = 'message_received'
     MESSAGE_SENT = 'message_sent'
     BANLIST_MODIFIED = 'banlist_modified'
+    REGISTERED_USER_LIST_RECEIVED = 'registered_user_list_received'
     AUDIO_TRANSMISSION_RECEIVED = 'audio_transmission_received'
     AUDIO_TRANSMISSION_SENT = 'audio_transmission_sent'
     AUDIO_DISABLED = 'audio_disabled'

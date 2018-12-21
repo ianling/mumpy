@@ -97,6 +97,8 @@ There are a number of different event types you can write handlers for.
     * Fired when the client enables audio processing. This happens when the client initially connects to the server and successfully initializes an audio codec.
 * MumpyEvent.BANLIST_MODIFIED
     * Fired when the server's ban list is modified.
+* MumpyEvent.REGISTERED_USER_LIST_RECEIVED
+    * Fired when the client receives the list of registered users on the server. These are stored in <Mumpy instance>.
 
 ## Client Methods
 

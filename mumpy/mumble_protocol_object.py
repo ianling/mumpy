@@ -18,9 +18,15 @@ class MumbleProtocolObject(dict):
     def update(self, message, prefix=None):
         """
         Uses a protobuf message to update the object's fields.
-        prefix determines the top-level attribute to store the fields in.
-
+        
         Example: <obj>.update(message, prefix="stats") will store all the fields in message at <obj>.stats.*
+
+        Args:
+          message(protobuf message): the protobuf message to use when updating this object's values
+          prefix(str): top-level attribute to store the fields in (Default value = None)
+
+        Returns:
+            None
         """
         print(message)
         updated_fields = message.ListFields()
