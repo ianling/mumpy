@@ -35,7 +35,7 @@ Below is some basic code to get you started. It creates a bot and adds a functio
         print("The bot is still alive.")
         sleep(3)
     
-    logging.info("All bots have died!")
+    print("All bots have died!")
 
 ## Events
 
