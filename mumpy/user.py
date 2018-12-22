@@ -12,7 +12,17 @@ class User(MumbleProtocolObject):
 
     @property
     def session_id(self):
+        """
+        This user's session ID.
+        """
         return self.session
+
+    @property
+    def user_id(self):
+        """
+        This user's user ID.
+        """
+        return self.user_id
 
     def update_texture(self):
         self._server.request_blob(user_textures=[self.session_id])

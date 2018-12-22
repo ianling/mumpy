@@ -915,7 +915,7 @@ class Mumpy:
         """
         Queries the server for a User's stats.
         This function does not return anything. The server's response may fire the following events:
-         - USER_STATS_UPDATED
+        - USER_STATS_UPDATED
 
         Args:
             user(User): the User to retrieve stats for
@@ -931,9 +931,9 @@ class Mumpy:
         """
         Queries the server for the full contents of a User's texture or comment, or a Channel's description.
         This function does not return anything. The server's response may fire the following events:
-         - USER_COMMENT_UPDATED
-         - USER_TEXTURE_UPDATED
-         - CHANNEL_UPDATED
+        - USER_COMMENT_UPDATED
+        - USER_TEXTURE_UPDATED
+        - CHANNEL_UPDATED
 
         Args:
             user_textures(iterable): a list of Users to retrieve textures for (Default value = ())
@@ -1116,7 +1116,7 @@ class Mumpy:
         """
         Retrieves the Mumpy instance's permissions in the specified Channel.
         This function does not return anything. The server's response may fire the following events:
-         - CHANNEL_PERMISSIONS_UPDATED
+        - CHANNEL_PERMISSIONS_UPDATED
 
         Args:
             channel(Channel): the Channel to retrieve permissions for
@@ -1132,7 +1132,7 @@ class Mumpy:
         """
         Retrieves the list of registered users from the server.
         This function does not return anything. The server's response may fire the following events:
-         - REGISTERED_USER_LIST_RECEIVED
+        - REGISTERED_USER_LIST_RECEIVED
 
         Returns:
             None
