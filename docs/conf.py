@@ -170,3 +170,16 @@ epub_title = project
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
+
+# Need to have ReadTheDocs do some weird stuff when building the docs,
+# because opuslib requires a native C library (.dll or .so) to be present on the build system.
+import sys
+from unittest.mock import MagicMock
+
+class Mock(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+MOCK_MODULES = ['opuslib']
+sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
