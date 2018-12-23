@@ -25,13 +25,37 @@ class User(MumbleProtocolObject):
         return self.user_id
 
     def update_texture(self):
+        """
+        Query the server for this user's texture.
+
+        Returns:
+            None
+        """
         self._server.request_blob(user_textures=[self.session_id])
 
     def update_comment(self):
+        """
+        Query the server for this user's comment.
+
+        Returns:
+            None
+        """
         self._server.request_blob(user_comments=[self.session_id])
 
     def get_channel(self):
+        """
+        Get this user's current Channel.
+
+        Returns:
+            Channel: the user's current Channel
+        """
         return self._server.get_channel_by_id(self.channel_id)
 
     def clear_audio_log(self):
+        """
+        Clears this user's audio log, removing all their completed audio transmissions from memory.
+
+        Returns:
+            None
+        """
         self.audio_log = []

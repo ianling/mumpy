@@ -1,18 +1,38 @@
 from Crypto.Cipher import AES
 
 
-AES_BLOCK_SIZE = 16
+AES_BLOCK_SIZE = 16  # 16 bytes == 128 bits
 SHIFTBITS = 7
 
 
 class MumbleCrypto:
+    """
+    Python implementation of the official Mumble client's custom implementation of AES-OCB.
+    """
     def __init__(self, key, client_nonce, server_nonce):
+        """
+        Initializes a MumbleCrypto object that allows you to encrypt and decrypt data in a way that is compatible with
+        the official Mumble client and server.
+
+        Args:
+            key(bytes): the encryption key
+            client_nonce(bytes): the nonce to use when encrypting
+            server_nonce(bytes): the nonce to use when decrypting
+        """
         self.key = key
         self.client_nonce = client_nonce
         self.server_nonce = server_nonce
         self.aes = AES.new(self.key, AES.MODE_ECB)
 
     def encrypt(self, plaintext):
+        """
+        Increments the client nonce, and then encrypts plaintext.
+        Args:
+            plaintext:
+
+        Returns:
+            (bytes, bytes): the tag and the ciphertext that resulted from the encryption operation
+        """
         # increment nonce
         nonce = int.from_bytes(self.client_nonce, byteorder='little')
         nonce += 1
@@ -58,6 +78,17 @@ class MumbleCrypto:
         return tag, dst
 
     def decrypt(self, ciphertext, nonce_byte):
+        """
+        Syncs our stored server nonce with the nonce byte received in the packet we are decrypting,
+        and then decrypts the packet.
+
+        Args:
+            ciphertext(bytes): the data to decrypt
+            nonce_byte(bytes): the first byte of the nonce that the server used to encrypt the packet
+
+        Returns:
+            (bytes, bytes): the tag and the plaintext that resulted from the decryption operation
+        """
         # determine correct nonce
         # TODO: If we can't determine the correct nonce, send a CryptSetup packet to resync the nonces, otherwise UDP will be broken if they ever get out of sync
         offset = 1

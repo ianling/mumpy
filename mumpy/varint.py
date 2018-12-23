@@ -22,6 +22,12 @@ class VarInt:
         return next_byte
 
     def encode(self):
+        """
+        Encodes data as a VarInt.
+
+        Returns:
+            bytes: the data encoded as a VarInt
+        """
         if self.data < -0b11:       # negative recursive
             varint = VarInt(abs(self.data)).encode()
             return_value = b'\xf8' + varint
@@ -45,6 +51,13 @@ class VarInt:
         return return_value
 
     def read_next(self):
+        """
+        Decodes the next integer from the VarInt data, popping the data from the array of bytes as it goes,
+        so that this function can be used repeatedly on several VarInts in a row.
+
+        Returns:
+            int: the decoded integer
+        """
         next_byte = self._get_next_byte()
         if next_byte >> 7 == VARINT_7_BIT:
             return_value = next_byte
@@ -85,4 +98,10 @@ class VarInt:
         return return_value
 
     def get_current_data(self):
+        """
+        Gets the VarInt-encoded data from memory.
+
+        Returns:
+            bytes: VarInt-encoded data
+        """
         return bytes(self.data)

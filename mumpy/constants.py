@@ -13,6 +13,9 @@ class MumpyEnum(type):
 
 
 class MessageType(metaclass=MumpyEnum):
+    """
+    The Mumble protocol protobuf message types.
+    """
     VERSION = 0
     UDPTUNNEL = 1
     AUTHENTICATE = 2
@@ -42,6 +45,9 @@ class MessageType(metaclass=MumpyEnum):
 
 
 class Permission(metaclass=MumpyEnum):
+    """
+    The Mumble protocol permissions.
+    """
     NONE = 0x0
     WRITE = 0x1
     TRAVERSE = 0x2
@@ -66,6 +72,9 @@ class Permission(metaclass=MumpyEnum):
 
 
 class AudioType(metaclass=MumpyEnum):
+    """
+    The audio codecs supported by the Mumble protocol.
+    """
     CELT_ALPHA = 0
     PING = 1
     SPEEX = 2
@@ -74,6 +83,9 @@ class AudioType(metaclass=MumpyEnum):
 
 
 class MumpyEvent(metaclass=MumpyEnum):
+    """
+    The event types supported by Mumpy.
+    """
     CONNECTED = 'self_connected'
     DISCONNECTED = 'self_disconnected'
     UDP_CONNECTED = 'udp_connected'
@@ -115,4 +127,4 @@ RELEASE_STRING = "MumPy 1.0b"
 OS_STRING = RELEASE_STRING
 OS_VERSION_STRING = "Python %s - %s %s" % (PYTHON_VERSION, platform.system(), platform.release())
 
-PING_INTERVAL = 10  # seconds
+PING_INTERVAL = 10  # how often to send Ping messages to the server, in seconds
