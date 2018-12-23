@@ -1,19 +1,11 @@
 import weakref
 
 
-class MumbleProtocolObject(dict):
+class MumbleProtocolObject:
     def __init__(self, server, message):
+        # keep a weak reference to the parent object (the Mumpy instance)
         self._server = weakref.proxy(server)
         self.update(message)
-
-    def __getattr__(self, attr):
-        try:
-            return self[attr]
-        except KeyError:
-            return None
-
-    def __setattr__(self, attr, value):
-        self[attr] = value
 
     def update(self, message, prefix=None):
         """
@@ -28,10 +20,11 @@ class MumbleProtocolObject(dict):
         Returns:
             None
         """
-        print(message)
+        print(message)  # for debugging
         updated_fields = message.ListFields()
+        if prefix is None:
+            object_to_update = self
+        else:
+            object_to_update = getattr(self, prefix)
         for field, value in updated_fields:
-            if prefix is None:
-                self[field.name] = value
-            else:
-                self[prefix][field.name] = value
+            setattr(object_to_update, field.name, value)
