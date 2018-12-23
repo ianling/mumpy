@@ -936,9 +936,6 @@ class Mumpy:
             user_comments(iterable): a list of Users to retrieve comments for (Default value = ())
             channel_descriptions(iterable): a list of Channels to retrieve descriptions for (Default value = ())
 
-        Returns:
-            None
-
         Events:
             USER_COMMENT_UPDATED
             USER_TEXTURE_UPDATED
