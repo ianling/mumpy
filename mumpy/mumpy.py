@@ -937,9 +937,9 @@ class Mumpy:
             channel_descriptions(iterable): a list of Channels to retrieve descriptions for (Default value = ())
 
         Events:
-            USER_COMMENT_UPDATED: asdf gfd
-            USER_TEXTURE_UPDATED: fdsggfg gfd
-            CHANNEL_UPDATED: gfdgdfgf gfd
+            - USER_COMMENT_UPDATED
+            - USER_TEXTURE_UPDATED
+            - CHANNEL_UPDATED
         """
         message_payload = mumble_pb2.RequestBlob()
         message_payload.session_texture.extend(user_textures)
