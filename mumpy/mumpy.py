@@ -930,12 +930,6 @@ class Mumpy:
     def request_blob(self, user_textures=(), user_comments=(), channel_descriptions=()):
         """
         Queries the server for the full contents of a User's texture or comment, or a Channel's description.
-        This function does not return anything. The server's response may fire the following events:
-
-        Events:
-            USER_COMMENT_UPDATED
-            USER_TEXTURE_UPDATED
-            CHANNEL_UPDATED
 
         Args:
             user_textures(iterable): a list of Users to retrieve textures for (Default value = ())
@@ -944,6 +938,11 @@ class Mumpy:
 
         Returns:
             None
+
+        Events:
+            USER_COMMENT_UPDATED
+            USER_TEXTURE_UPDATED
+            CHANNEL_UPDATED
         """
         message_payload = mumble_pb2.RequestBlob()
         message_payload.session_texture.extend(user_textures)
