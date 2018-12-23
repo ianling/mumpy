@@ -1,2 +1,2 @@
 from .mumpy import Mumpy
-from .mumpy import MumpyEvent
+from .constants import MumpyEvent
