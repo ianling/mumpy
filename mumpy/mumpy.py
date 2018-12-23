@@ -931,9 +931,11 @@ class Mumpy:
         """
         Queries the server for the full contents of a User's texture or comment, or a Channel's description.
         This function does not return anything. The server's response may fire the following events:
-        - USER_COMMENT_UPDATED
-        - USER_TEXTURE_UPDATED
-        - CHANNEL_UPDATED
+
+        Events:
+            USER_COMMENT_UPDATED
+            USER_TEXTURE_UPDATED
+            CHANNEL_UPDATED
 
         Args:
             user_textures(iterable): a list of Users to retrieve textures for (Default value = ())
