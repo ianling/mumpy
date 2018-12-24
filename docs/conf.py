@@ -172,7 +172,7 @@ epub_title = project
 epub_exclude_files = ['search.html']
 
 # Napoleon options
-napoleon_custom_sections = [('events', 'parameters')]
+napoleon_custom_sections = ['events']
 
 # Need to have ReadTheDocs do some weird stuff when building the docs,
 # because opuslib requires a native C library (.dll or .so) to be present on the build system.
