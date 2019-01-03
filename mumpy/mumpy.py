@@ -550,7 +550,17 @@ class Mumpy:
     def add_event_handler(self, event_type, function_handle):
         """
         Adds the function as a handler for the specified event type.
-        Example: bot.add_event_handler(MumpyEvent.USER_KICKED, kickHandlerFunction)
+        When an event is fired, any functions added as handlers for that event type will be run with two arguments,
+        the Mumpy instance that the event originated from (in case you have multiple instances running), as well as
+        the protobuf message that caused the event to be fired.
+
+        Example:
+            def kick_handler_function(mumpy_instance, raw_message):
+                kicked_user = mumpy_instance.get_user_by_id(raw_message.session)
+                kicker_session_id = raw_message.actor
+                reason = raw_message.reason
+
+            bot.add_event_handler(MumpyEvent.USER_KICKED, kick_handler_function)
 
         Args:
             event_type(MumpyEvent.EVENT_TYPE): an event from the MumpyEvent enum
@@ -564,6 +574,10 @@ class Mumpy:
     def connect(self, address, port=64738, certfile=None, keyfile=None, keypassword=None):
         """
         Starts the connection thread that connects to address:port.
+        Optionally uses an SSL certificate in PEM format to identify the client.
+        You can generate a self-signed SSL certificate and key file using a command like the following:
+
+        ``# openssl req -newkey rsa:2048 -nodes -keyout mumpy_key.pem -x509 -days 2000 -out mumpy_certificate.pem``
 
         Args:
             address(str): string containing either an IP address, FQDN, hostname, etc.
@@ -626,7 +640,7 @@ class Mumpy:
     def get_channels(self):
         """
         Returns:
-            dict: a dictionary of Channel objects and IDs in the form channels[id] = Channel()
+            dict: a dictionary of Channel objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
         """
         return self.channels
 
@@ -691,14 +705,14 @@ class Mumpy:
     def get_current_session_id(self):
         """
         Returns:
-            int: the Mumpy instance's session ID
+            int: the :py:class:`Mumpy` instance's session ID
         """
         return self.session_id
 
     def get_current_username(self):
         """
         Returns:
-            str: the Mumpy instance's username
+            str: the :py:class:`Mumpy` instance's username
         """
         return self.username
 
