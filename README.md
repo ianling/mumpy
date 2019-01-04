@@ -21,9 +21,12 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 
 ## To-do (in order of priority)
 
+* Fix audio issue when people do not have quality settings maxed out in the client
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
+* Figure out how to decode IP addresses sent in UserStats messages
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
 * Mixdown audio
 * A better way to store audio than a list of potentially massive byte strings on each user
 * Add function to manually kill UDP connection and switch back to TCP
+* Handle position data in audio transmissions
