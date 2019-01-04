@@ -542,7 +542,8 @@ class Mumpy:
             sleep(1)
             if (int(time()) - self.last_ping_time) >= PING_INTERVAL:
                 self.ping()
-                self.ping(udp=True)
+                if self.connection_state == ConnectionState.CONNECTED_UDP:
+                    self.ping(udp=True)
 
     def _send_payload(self, message_type, payload):
         packet = struct.pack('!HL', message_type, payload.ByteSize()) + payload.SerializeToString()
@@ -929,6 +930,13 @@ class Mumpy:
             bool: True if bot is connected to the server
         """
         return self.connection_state != ConnectionState.DISCONNECTED
+
+    def is_udp_alive(self):
+        """
+        Returns:
+            bool: True if the bot has an active UDP connection to the server
+        """
+        return self.connection_state == ConnectionState.CONNECTED_UDP
 
     def update_user_stats(self, user):
         """
