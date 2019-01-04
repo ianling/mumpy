@@ -1,6 +1,6 @@
 from mumpy.channel import Channel
 from mumpy import mumble_pb2
-from mumpy.constants import MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING,\
+from mumpy.constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING,\
     RELEASE_STRING, OS_STRING, PING_INTERVAL
 from mumpy.event_handler import EventHandler
 from mumpy.mumblecrypto import MumbleCrypto
@@ -10,7 +10,6 @@ from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
 import logging
-import opuslib
 import select
 import socket
 import struct
@@ -64,8 +63,7 @@ class Mumpy:
         self.audio_encoders = None
         self.audio_target = 0
         self.audio_sequence_number = 0
-        self.connected = False
-        self.use_udp = False
+        self.connection_state = ConnectionState.DISCONNECTED
         self.max_bandwidth = None
         self.crypto = None
         self.encryption_key = None
@@ -75,6 +73,12 @@ class Mumpy:
         self.max_message_length = None
         self.max_image_message_length = None
         self.server_allow_html = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, tb):
+        self.disconnect()
 
     # message type 0
     def _message_handler_Version(self, payload):
@@ -121,7 +125,7 @@ class Mumpy:
         rejection_type = message.RejectType.Name(message.type)
         reason = message.reason
         self.log.error(f'Server rejected connection. Type: {rejection_type}. Reason: {reason}')
-        self.connected = False
+        self.connection_state = ConnectionState.DISCONNECTED
 
     # message type 5
     def _message_handler_ServerSync(self, payload):
@@ -169,7 +173,7 @@ class Mumpy:
         message = mumble_pb2.UserRemove()
         message.ParseFromString(payload)
         if message.session == self.session_id:
-            self.connected = False
+            self.connection_state = ConnectionState.DISCONNECTED
         try:
             session_username = self.get_user_by_id(message.session).name
         except Exception:
@@ -455,21 +459,21 @@ class Mumpy:
             return
         response_decrypted = self._decrypt(response)
         self.udp_socket.settimeout(None)
-        self.use_udp = True
+        self.connection_state = ConnectionState.CONNECTED_UDP
         self.log.debug("Using UDP for audio traffic")
         self._fire_event(MumpyEvent.UDP_CONNECTED)
-        while self.use_udp:
+        while self.connection_state == ConnectionState.CONNECTED_UDP:
             inputs, outputs, exceptions = select.select([self.udp_socket], [], [])
             for input_socket in inputs:
                 try:
                     udp_message_buffer, sender = input_socket.recvfrom(2048)
                 except OSError:
                     self.log.debug("UDP socket died, switching to TCP")
-                    self.use_udp = False
+                    self.connection_state = ConnectionState.CONNECTED_NO_UDP
                     continue
                 if len(udp_message_buffer) == 0:  # connection closed by server
                     self.log.debug("UDP socket returned 0 bytes, closing connection and switching to TCP")
-                    self.use_udp = False
+                    self.connection_state = ConnectionState.CONNECTED_NO_UDP
                     continue
                 try:
                     decrypted_udp_message = self._decrypt(udp_message_buffer)
@@ -493,18 +497,18 @@ class Mumpy:
         self.ping_thread = Thread(target=self._ping_thread)
         self.ping_thread.start()
         self.tcp_message_buffer = b""
-        while self.connected:
+        while self.connection_state != ConnectionState.DISCONNECTED:
             inputs, outputs, exceptions = select.select([self.ssl_socket], [], [])
             for input_socket in inputs:
                 try:
                     self.tcp_message_buffer += input_socket.recv(4096)
                 except OSError:
                     self.log.debug("TCP socket died")
-                    self.connected = False
+                    self.connection_state = ConnectionState.DISCONNECTED
                     continue
                 if len(self.tcp_message_buffer) == 0:  # connection closed by server
                     self.log.debug("TCP socket returned 0 bytes, closing connection")
-                    self.connected = False
+                    self.connection_state = ConnectionState.DISCONNECTED
                     continue
 
                 while len(self.tcp_message_buffer) >= 6:  # message header present
@@ -596,6 +600,7 @@ class Mumpy:
         self.keypassword = keypassword
         self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
         try:
+            import opuslib
             self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}
             self.audio_encoders = {AudioType.OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
             self.audio_enabled = True
@@ -603,7 +608,7 @@ class Mumpy:
         except Exception:
             self.log.warning('Failed to initialize Opus audio codec. Disabling audio')
             self._fire_event(MumpyEvent.AUDIO_DISABLED)
-        self.connected = True
+        self.connection_state = ConnectionState.CONNECTING
         self.tcp_connection_thread = Thread(target=self._start_tcp_connection)
         self.tcp_connection_thread.start()
 
@@ -614,21 +619,21 @@ class Mumpy:
         Returns:
             None
         """
-        self.connected = False
-        self.use_udp = False
-        try:
-            self.ssl_socket.shutdown(socket.SHUT_RDWR)
-        except OSError:
-            pass
-        finally:
-            self.ssl_socket.close()
-        if self.udp_socket is not None:
+        if self.connection_state != ConnectionState.DISCONNECTED:
             try:
-                self.udp_socket.shutdown(socket.SHUT_RDWR)
+                self.ssl_socket.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
             finally:
-                self.udp_socket.close()
+                self.ssl_socket.close()
+            if self.udp_socket is not None:
+                try:
+                    self.udp_socket.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                finally:
+                    self.udp_socket.close()
+        self.connection_state = ConnectionState.DISCONNECTED
 
     def get_users(self):
         """
@@ -850,7 +855,7 @@ class Mumpy:
         sequence_number = VarInt(self.audio_sequence_number).encode()
         payload = VarInt(len(frame) | 0x2000).encode() + frame
         udp_packet = header + sequence_number + payload
-        if self.use_udp:
+        if self.connection_state == ConnectionState.CONNECTED_UDP:
             self._send_packet_udp(udp_packet)
         else:
             self._send_audio_packet_tcp(udp_packet)
@@ -923,7 +928,7 @@ class Mumpy:
         Returns:
             bool: True if bot is connected to the server
         """
-        return self.connected
+        return self.connection_state != ConnectionState.DISCONNECTED
 
     def update_user_stats(self, user):
         """

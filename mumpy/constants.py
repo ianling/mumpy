@@ -84,6 +84,18 @@ class AudioType(metaclass=MumpyEnum):
     OPUS = 4
 
 
+class ConnectionState(metaclass=MumpyEnum):
+    """
+    The different states the connection to a server can be in.
+    """
+    DISCONNECTED = 'disconnected'
+    CONNECTING = 'connecting'
+    AUTHENTICATING = 'authenticating'
+    CONNECTED_NO_UDP = 'connected_no_udp'
+    CONNECTED_UDP = 'connected_udp'
+    DISCONNECTING = 'disconnecting'
+
+
 class MumpyEvent(metaclass=MumpyEnum):
     """
     The event types supported by Mumpy.
