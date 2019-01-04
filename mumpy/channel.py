@@ -27,3 +27,15 @@ class Channel(MumbleProtocolObject):
         """
         users = self._server.get_users()
         return [user for user in users.values() if user.channel_id == self.id]
+
+    def rename(self, new_name):
+        """
+        Sets the channel's name to new_name.
+
+        Args:
+            new_name(str): The new name for the channel
+
+        Returns:
+            None
+        """
+        self._server.rename_channel(self, new_name)

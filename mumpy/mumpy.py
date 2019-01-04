@@ -399,7 +399,8 @@ class Mumpy:
             size = size & 0x1fff
             voice_frame = varint_reader.get_current_data()[:size]  # anything left after size is position data
             # TODO: Handle position data
-            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
+            # pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
+            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=4096)  # 48000 / 100 * 12
             user = self.get_user_by_id(session_id)
             user.audio_buffer += pcm
             user.audio_buffer_dict[sequence_number] = pcm
@@ -553,7 +554,8 @@ class Mumpy:
         the Mumpy instance that the event originated from (in case you have multiple instances running), as well as
         the protobuf message that caused the event to be fired.
 
-        Example:
+        Example::
+
             def kick_handler_function(mumpy_instance, raw_message):
                 kicked_user = mumpy_instance.get_user_by_id(raw_message.session)
                 kicker_session_id = raw_message.actor
@@ -1171,3 +1173,9 @@ class Mumpy:
         """
         message_payload = mumble_pb2.UserList()
         self._send_payload(MessageType.USERLIST, message_payload)
+
+    def rename_channel(self, channel, new_name):
+        message_payload = mumble_pb2.ChannelState()
+        message_payload.channel_id = channel.id
+        message_payload.name = new_name
+        self._send_payload(MessageType.CHANNELSTATE, message_payload)
