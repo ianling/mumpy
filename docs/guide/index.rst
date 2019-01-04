@@ -4,6 +4,7 @@ User Guide
 .. toctree::
    :maxdepth: 2
 
+   installation
    examples
 
-This section will contain a user guide for Mumpy.
+This section contains information about installing and using Mumpy.
