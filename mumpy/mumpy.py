@@ -57,6 +57,9 @@ class Mumpy:
         self.log = None
         self.tcp_connection_thread = None
         self.udp_connection_thread = None
+        self.ping_thread = None
+        self.ssl_socket = None
+        self.udp_socket = None
         self.audio_enabled = False
         self.preferred_audio_codec = AudioType.OPUS
         self.audio_decoders = None
@@ -487,15 +490,6 @@ class Mumpy:
         self.udp_socket.sendto(self._encrypt(data), (self.address, self.port))
 
     def _start_tcp_connection(self):
-        self.log.debug(f"Connecting to {self.address}:{self.port}")
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.address, self.port))
-        ssl_context = SSLContext(PROTOCOL_TLS)
-        if self.certfile is not None:
-            ssl_context.load_cert_chain(self.certfile, keyfile=self.keyfile, password=self.keypassword)
-        self.ssl_socket = ssl_context.wrap_socket(sock)
-        self.ping_thread = Thread(target=self._ping_thread)
-        self.ping_thread.start()
         self.tcp_message_buffer = b""
         while self.connection_state != ConnectionState.DISCONNECTED:
             inputs, outputs, exceptions = select.select([self.ssl_socket], [], [])
@@ -610,8 +604,21 @@ class Mumpy:
             self.log.warning('Failed to initialize Opus audio codec. Disabling audio')
             self._fire_event(MumpyEvent.AUDIO_DISABLED)
         self.connection_state = ConnectionState.CONNECTING
+        self.log.debug(f"Connecting to {self.address}:{self.port}")
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((self.address, self.port))
+        ssl_context = SSLContext(PROTOCOL_TLS)
+        if self.certfile is not None:
+            ssl_context.load_cert_chain(self.certfile, keyfile=self.keyfile, password=self.keypassword)
+        self.ssl_socket = ssl_context.wrap_socket(sock)
+        self.ping_thread = Thread(target=self._ping_thread)
+        self.ping_thread.start()
         self.tcp_connection_thread = Thread(target=self._start_tcp_connection)
         self.tcp_connection_thread.start()
+        # do not return from this method until the connection is fully established and usable, or it fails
+        while self.connection_state not in (ConnectionState.CONNECTED_UDP, ConnectionState.CONNECTED_NO_UDP,
+                                            ConnectionState.DISCONNECTED):
+            sleep(0.1)
 
     def disconnect(self):
         """

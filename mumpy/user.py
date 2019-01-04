@@ -17,13 +17,6 @@ class User(MumbleProtocolObject):
         """
         return self.session
 
-    @property
-    def user_id(self):
-        """
-        This user's user ID.
-        """
-        return self.user_id
-
     def update_texture(self):
         """
         Query the server for this user's texture.
