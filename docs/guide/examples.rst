@@ -6,7 +6,7 @@ Barebones Connection
 
 This example simply connects to a server, sends a text chat message to the channel, and then disconnects.
 
-.. codeblock:: python
+.. code:: python
 
     from mumpy import Mumpy
 
@@ -20,7 +20,7 @@ Barebones Connection using 'with'
 
 This example uses a different syntax to perform all the same actions as the example above.
 
-.. codeblock:: python
+.. code:: python
 
     from mumpy import Mumpy
 
@@ -33,7 +33,7 @@ Echo Bot
 
 This example is a bot that echoes all text chat messages back to the original sender.
 
-.. codeblock:: python
+.. code:: python
 
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
