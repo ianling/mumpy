@@ -7,10 +7,6 @@ Welcome to Mumpy's documentation!
    guide/index
    modules/index
 
-Test text. :class:`~mumpy.constants.MumpyEvent` link
-
-
-
 Indices and tables
 ==================
 

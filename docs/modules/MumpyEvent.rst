@@ -1,5 +1,5 @@
 MumpyEvent Enum
-==============
+===============
 
 .. module:: mumpy.constants
 

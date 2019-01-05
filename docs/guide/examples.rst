@@ -31,17 +31,17 @@ This example uses a different syntax to perform all the same actions as the exam
 Echo Bot
 --------
 
-This example is a bot that echoes all text chat messages back to the original sender.
+This example is a bot that echoes all text chat messages back to the original sender as a private message.
 
 .. code:: python
 
     from mumpy import Mumpy, MumpyEvent
     from time import sleep
 
-    def text_message_handler(bot, raw_message):
-        sender = bot.get_user_by_id(raw_message.actor)
+    def text_message_handler(mumpy_instance, raw_message):
+        sender = mumpy_instance.get_user_by_id(raw_message.actor)
         message_body = raw_message.message
-        bot.text_message(message_body, users=(sender,))
+        mumpy_instance.text_message(message_body, users=(sender,))
 
     my_bot = Mumpy(username="MyBot")
     my_bot.add_event_handler(MumpyEvent.MESSAGE_RECEIVED, text_message_handler)  # add our function as a handler for MESSAGE_RECEIVED events

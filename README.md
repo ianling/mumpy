@@ -22,6 +22,7 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 ## To-do (in order of priority)
 
 * Fix audio issue when people do not have quality settings maxed out in the client
+* Add additional methods for interacting with Users and Channels
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
 * Figure out how to decode IP addresses sent in UserStats messages
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
