@@ -52,3 +52,16 @@ class User(MumbleProtocolObject):
             None
         """
         self.audio_log = []
+
+    def kick(self, reason="", ban=False):
+        """
+        Kicks user. Bans the user if ban is True.
+
+        Args:
+            reason(str): The reason for kicking
+            ban(bool): Whether or not the user should also be banned
+
+        Returns:
+            None
+        """
+        self._server.kick_user(self, reason, ban)
