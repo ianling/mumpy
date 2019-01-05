@@ -553,6 +553,7 @@ class Mumpy:
         When an event is fired, any functions added as handlers for that event type will be run with two arguments,
         the Mumpy instance that the event originated from (in case you have multiple instances running), as well as
         the protobuf message that caused the event to be fired.
+        TODO: fix this part of the docs:
 
         Example::
 
