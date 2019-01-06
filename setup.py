@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='Mumpy',
-      version='1.0b',
+      version='1.0',
       description='Mumble Client Framework',
       author='Ian Ling',
       include_package_data=True,

@@ -1,2 +1,5 @@
-__pycache__/
-.idea/
+__pycache__
+.idea
+_build
+_static
+_templates
