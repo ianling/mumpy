@@ -36,4 +36,4 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 
 ## Thanks
 
-Big thanks to Lartza [@Lartza](https://github.com/Lartza) and [@Azlux](https://github.com/azlux) for their work on pymumble, as well as their insight in #mumble on Freenode.net.
+Big thanks to [@Lartza](https://github.com/Lartza) and [@Azlux](https://github.com/azlux) for their work on pymumble, as well as their insight in #mumble on Freenode.net.
