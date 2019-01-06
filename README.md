@@ -4,6 +4,8 @@ Mumpy is a Mumble client framework written in Python 3.
 
 It is event-driven, making it perfect for writing Mumble bots.
 
+This project is still in development and has not yet been officially released. That said, it is usable, but I can't guarantee that function names will remain the same. If you have a feature request, please feel free to create an issue.
+
 ## Requirements
 
 * Python 3.6+
@@ -21,7 +23,7 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 
 ## To-do (in order of priority)
 
-* Fix audio issue when people do not have quality settings maxed out in the client
+* Fix audio crackling issue
 * Add additional methods for interacting with Users and Channels
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
 * Figure out how to decode IP addresses sent in UserStats messages
@@ -31,3 +33,7 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 * A better way to store audio than a list of potentially massive byte strings on each user
 * Add function to manually kill UDP connection and switch back to TCP
 * Handle position data in audio transmissions
+
+## Thanks
+
+Big thanks to Lartza and Azlux for their work on pymumble, as well as their insight in #mumble on Freenode.net.

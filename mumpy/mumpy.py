@@ -399,8 +399,7 @@ class Mumpy:
             size = size & 0x1fff
             voice_frame = varint_reader.get_current_data()[:size]  # anything left after size is position data
             # TODO: Handle position data
-            # pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
-            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=4096)  # 48000 / 100 * 12
+            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
             user = self.get_user_by_id(session_id)
             user.audio_buffer += pcm
             user.audio_buffer_dict[sequence_number] = pcm
