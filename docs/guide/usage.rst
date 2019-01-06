@@ -31,5 +31,33 @@ Event handlers should always accept two parameters; the first parameter is the :
 
 A full list of all the events you can add handlers for can be found in the :class:`~mumpy.constants.MumpyEvent` part of the :ref:`api_reference` section.
 
+SSL Certificates
+----------------
+
+Mumble allows you to use an SSL certificate as the client in order to verify your identity on the server. This also allows the server to remember which channel you were last in when you disconnected, and assign you administrator privileges.
+
+You can generate a self-signed SSL certificate and key file using a command like the following:
+
+.. code:: bash
+
+    $ openssl req -newkey rsa:2048 -nodes -keyout mumpy_key.pem -x509 -days 2000 -out mumpy_certificate.pem
+
+To use the certificate and key file you generated, use the ``certfile`` and ``keyfile`` parameters when connecting to a server:
+
+.. code:: python
+
+    my_mumpy = Mumpy()
+    my_mumpy.connect('localhost', certfile='mumpy_certificate.pem', keyfile='mumpy_key.pem')
+
+Logging
+-------
+
+Mumpy uses Python's logging library to handle logging. If you are seeing too many logs, you can add the following code to your program to reduce the logging verbosity:
+
+.. code:: python
+
+    import logging
+
+    logging.basicConfig(level=logging.INFO)  # you can also use WARNING or ERROR
 
 .. _official Mumble client's protobuf definition file: https://github.com/mumble-voip/mumble/blob/master/src/Mumble.proto

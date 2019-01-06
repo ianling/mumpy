@@ -577,9 +577,6 @@ class Mumpy:
         """
         Starts the connection thread that connects to address:port.
         Optionally uses an SSL certificate in PEM format to identify the client.
-        You can generate a self-signed SSL certificate and key file using a command like the following:
-
-        ``# openssl req -newkey rsa:2048 -nodes -keyout mumpy_key.pem -x509 -days 2000 -out mumpy_certificate.pem``
 
         Args:
             address(str): string containing either an IP address, FQDN, hostname, etc.
