@@ -644,14 +644,14 @@ class Mumpy:
     def get_users(self):
         """
         Returns:
-            dict: a dictionary of User objects and IDs in the form users[id] = User()
+            dict: a dictionary of :class:`~mumpy.user.User`objects and IDs in the form ``<Mumpy>.get_users()[id] = User()``
         """
         return self.users
 
     def get_channels(self):
         """
         Returns:
-            dict: a dictionary of Channel objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
+            dict: a dictionary of :class:`~mumpy.channel.Channel` objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
         """
         return self.channels
 
