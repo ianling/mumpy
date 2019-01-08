@@ -39,3 +39,12 @@ class Channel(MumbleProtocolObject):
             None
         """
         self._server.rename_channel(self, new_name)
+
+    def remove(self):
+        """
+        Removes this channel from the server.
+
+        Returns:
+            None
+        """
+        self._server.remove_channel(self)

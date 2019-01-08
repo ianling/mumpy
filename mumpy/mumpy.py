@@ -1,7 +1,7 @@
 from mumpy.channel import Channel
 from mumpy import mumble_pb2
-from mumpy.constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING,\
-    RELEASE_STRING, OS_STRING, PING_INTERVAL
+from mumpy.constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, \
+    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL, VoiceTarget
 from mumpy.event_handler import EventHandler
 from mumpy.mumblecrypto import MumbleCrypto
 from mumpy.user import User
@@ -322,7 +322,6 @@ class Mumpy:
 
     # message type 19 -- VoiceTarget
     # not sent by server, no handler needed
-    # TODO: handle sending these to the server
 
     # message type 20
     def _message_handler_PermissionQuery(self, payload):
@@ -1170,7 +1169,35 @@ class Mumpy:
         self._send_payload(MessageType.USERLIST, message_payload)
 
     def rename_channel(self, channel, new_name):
+        """
+        Changes a channel's name to new_name.
+
+        Args:
+            channel(Channel): the channel to rename
+            new_name(str): the new name
+
+        Returns:
+            None
+        """
         message_payload = mumble_pb2.ChannelState()
         message_payload.channel_id = channel.id
         message_payload.name = new_name
         self._send_payload(MessageType.CHANNELSTATE, message_payload)
+
+    def remove_channel(self, channel):
+        """
+        Removes a channel.
+
+        Args:
+            channel(Channel): the channel to remove
+
+        Returns:
+            None
+        """
+        message_payload = mumble_pb2.ChannelRemove()
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.CHANNELREMOVE, message_payload)
+
+    def set_voice_target(self, preset=None, users=None, channels=None, acl_group=None, follow_links=False):
+        message_payload = mumble_pb2.VoiceTarget()
+        #mumble_pb2.
