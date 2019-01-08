@@ -552,7 +552,6 @@ class Mumpy:
         When an event is fired, any functions added as handlers for that event type will be run with two arguments,
         the Mumpy instance that the event originated from (in case you have multiple instances running), as well as
         the protobuf message that caused the event to be fired.
-        TODO: fix this part of the docs:
 
         Example::
 
@@ -564,7 +563,7 @@ class Mumpy:
             bot.add_event_handler(MumpyEvent.USER_KICKED, kick_handler_function)
 
         Args:
-            event_type(MumpyEvent.EVENT_TYPE): an event from the MumpyEvent enum
+            event_type(str): an event from the :class:`~mumpy.constants.MumpyEvent` enum
             function_handle(function): the function to run when the specified event is fired
 
         Returns:
