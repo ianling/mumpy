@@ -31,6 +31,8 @@ Event handlers should always accept two parameters; the first parameter is the :
 
 A full list of all the events you can add handlers for can be found in the :class:`~mumpy.constants.MumpyEvent` part of the :ref:`api_reference` section.
 
+Because this is largely an asynchronous framework, many of the functions do not return values themselves. For example, when you call the :py:meth:`~mumpy.mumpy.Mumpy.update_user_stats` method, a request for the user's stats is sent to the server. The server will eventually (usually within milliseconds) respond, which will trigger the :py:const:`~mumpy.constants.MumpyEvent.USER_STATS_UPDATED` event, where you can handle the values that the server sent back to us.
+
 SSL Certificates
 ----------------
 

@@ -3,6 +3,11 @@ import weakref
 
 class MumbleProtocolObject:
     def __init__(self, server, message):
+        """
+        Args:
+            server(Mumpy): the Mumpy instance that this object originated from
+            message(protobuf message): the protobuf message that created this object
+        """
         # keep a weak reference to the parent object (the Mumpy instance)
         self._server = weakref.proxy(server)
         self.update(message)
