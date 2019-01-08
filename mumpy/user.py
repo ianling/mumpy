@@ -65,3 +65,60 @@ class User(MumbleProtocolObject):
             None
         """
         self._server.kick_user(self, reason, ban)
+
+    def mute(self):
+        """
+        Mutes the user.
+
+        Returns:
+            None
+        """
+        self._server.mute_user(self)
+
+    def deafen(self):
+        """
+        Deafens the user.
+
+        Returns:
+            None
+        """
+        self._server.deafen_user(self)
+
+    def unmute(self):
+        """
+        Unmutes the user.
+
+        Returns:
+            None
+        """
+        self._server.unmute_user(self)
+
+    def undeafen(self):
+        """
+        Undeafens the user.
+
+        Returns:
+            None
+        """
+        self._server.undeafen_user(self)
+
+    def move_to_channel(self, channel):
+        """
+        Moves the user to the specified channel.
+
+        Args:
+            channel(Channel): the Channel to move them to
+
+        Returns:
+            None
+        """
+        self._server.move_user_to_channel(self, channel)
+
+    def register(self):
+        """
+        Registers the user on the server.
+
+        Returns:
+            None
+        """
+        self._server.register_user(self)

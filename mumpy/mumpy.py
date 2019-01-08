@@ -979,22 +979,21 @@ class Mumpy:
         message_payload.channel_description.extend(channel_descriptions)
         self._send_payload(MessageType.REQUESTBLOB, message_payload)
 
-    def move_user_to_channel(self, users, channel):
+    def move_user_to_channel(self, user, channel):
         """
-        Moves each User in users to the specified Channel.
+        Moves the User to the specified Channel.
 
         Args:
-            users(iterable): a list of Users to move
-            channel(Channel): the channel to move the Users to
+            user(User): the User to move
+            channel(Channel): the channel to move the User to
 
         Returns:
             None
         """
-        for user in users:
-            message_payload = mumble_pb2.UserState()
-            message_payload.session = user.session_id
-            message_payload.channel_id = channel.id
-            self._send_payload(MessageType.USERSTATE, message_payload)
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.USERSTATE, message_payload)
 
     def join_channel(self, channel):
         """
