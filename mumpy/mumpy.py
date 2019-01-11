@@ -1,11 +1,11 @@
-from mumpy.channel import Channel
-from mumpy import mumble_pb2
-from mumpy.constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, \
-    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL, VoiceTarget
-from mumpy.event_handler import EventHandler
-from mumpy.mumblecrypto import MumbleCrypto
-from mumpy.user import User
-from mumpy.varint import VarInt
+from .channel import Channel
+from . import mumble_pb2
+from .constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, \
+    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL, PresetVoiceTarget
+from .event_handler import EventHandler
+from .mumblecrypto import MumbleCrypto
+from .user import User
+from .varint import VarInt
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
@@ -1198,6 +1198,9 @@ class Mumpy:
         message_payload.channel_id = channel.id
         self._send_payload(MessageType.CHANNELREMOVE, message_payload)
 
-    def set_voice_target(self, preset=None, users=None, channels=None, acl_group=None, follow_links=False):
+    def configure_voice_target(self, id, users=(), channels=(), acl_groups=(), follow_links=False,
+                               children=False):
         message_payload = mumble_pb2.VoiceTarget()
-        #mumble_pb2.
+        if len(users) > 0:
+            users_target = message_payload.targets.add()
+            users_target.session.extend(users)

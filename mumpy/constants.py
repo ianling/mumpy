@@ -73,10 +73,9 @@ class Permission(metaclass=MumpyEnum):
     ALL = 0xf07ff
 
 
-class VoiceTarget(metaclass=MumpyEnum):
+class PresetVoiceTarget(metaclass=MumpyEnum):
     DEFAULT = 0
     SERVER_LOOPBACK = 31
-    BROADCAST = 255
 
 
 class AudioType(metaclass=MumpyEnum):
