@@ -46,7 +46,7 @@ class MumbleCrypto:
         offset = 0
 
         while length_remaining > AES_BLOCK_SIZE:
-            buffer = plaintext[offset:offset+AES_BLOCK_SIZE]
+            buffer = plaintext[offset:offset + AES_BLOCK_SIZE]
             MumbleCrypto._S2(delta)
             MumbleCrypto._XOR(checksum, checksum, buffer)
             MumbleCrypto._XOR(tmp, delta, buffer)
@@ -64,7 +64,7 @@ class MumbleCrypto:
         tmp[AES_BLOCK_SIZE - 1] = num & 0xFF
         MumbleCrypto._XOR(tmp, tmp, delta)
         pad = self._AESencrypt(tmp)
-        for i, value in enumerate(plaintext[offset:offset+length_remaining]):
+        for i, value in enumerate(plaintext[offset:offset + length_remaining]):
             tmp[i] = value
         for i, value in enumerate(pad[length_remaining:AES_BLOCK_SIZE]):
             tmp[i + length_remaining] = value
@@ -122,7 +122,7 @@ class MumbleCrypto:
         offset = 0
 
         while length_remaining > AES_BLOCK_SIZE:
-            buffer = ciphertext[offset:offset+AES_BLOCK_SIZE]
+            buffer = ciphertext[offset:offset + AES_BLOCK_SIZE]
             MumbleCrypto._S2(delta)
             MumbleCrypto._XOR(tmp, delta, buffer)
             tmp = self._AESdecrypt(tmp)
@@ -141,7 +141,7 @@ class MumbleCrypto:
         MumbleCrypto._XOR(tmp, tmp, delta)
         pad = self._AESencrypt(tmp)
         MumbleCrypto._ZERO(tmp)
-        for i, value in enumerate(ciphertext[offset:offset+length_remaining]):
+        for i, value in enumerate(ciphertext[offset:offset + length_remaining]):
             tmp[i] = value
         MumbleCrypto._XOR(tmp, tmp, pad)
         MumbleCrypto._XOR(checksum, checksum, tmp)

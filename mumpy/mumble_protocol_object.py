@@ -19,7 +19,7 @@ class MumbleProtocolObject:
     def update(self, message, prefix=None):
         """
         Uses a protobuf message to update the object's fields.
-        
+
         Example: <obj>.update(message, prefix="stats") will store all the fields in message at <obj>.stats.*
 
         Args:

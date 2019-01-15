@@ -1,7 +1,7 @@
 from .channel import Channel
 from . import mumble_pb2
-from .constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, \
-    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL, PresetVoiceTarget
+from .constants import ConnectionState, MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, \
+    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL
 from .event_handler import EventHandler
 from .mumblecrypto import MumbleCrypto
 from .user import User
@@ -25,26 +25,26 @@ class Mumpy:
         self.channels = {}
         self.users = {}
         self.session_id = None
-        self.message_handlers = {MessageType.VERSION:       self._message_handler_Version,
-                                 MessageType.UDPTUNNEL:     self._message_handler_UDPTunnel,
-                                 MessageType.PING:          self._message_handler_Ping,
-                                 MessageType.REJECT:        self._message_handler_Reject,
-                                 MessageType.SERVERSYNC:    self._message_handler_ServerSync,
+        self.message_handlers = {MessageType.VERSION: self._message_handler_Version,
+                                 MessageType.UDPTUNNEL: self._message_handler_UDPTunnel,
+                                 MessageType.PING: self._message_handler_Ping,
+                                 MessageType.REJECT: self._message_handler_Reject,
+                                 MessageType.SERVERSYNC: self._message_handler_ServerSync,
                                  MessageType.CHANNELREMOVE: self._message_handler_ChannelRemove,
-                                 MessageType.CHANNELSTATE:  self._message_handler_ChannelState,
-                                 MessageType.USERREMOVE:    self._message_handler_UserRemove,
-                                 MessageType.USERSTATE:     self._message_handler_UserState,
-                                 MessageType.BANLIST:       self._message_handler_BanList,
-                                 MessageType.TEXTMESSAGE:   self._message_handler_TextMessage,
+                                 MessageType.CHANNELSTATE: self._message_handler_ChannelState,
+                                 MessageType.USERREMOVE: self._message_handler_UserRemove,
+                                 MessageType.USERSTATE: self._message_handler_UserState,
+                                 MessageType.BANLIST: self._message_handler_BanList,
+                                 MessageType.TEXTMESSAGE: self._message_handler_TextMessage,
                                  MessageType.PERMISSIONDENIED: self._message_handler_PermissionDenied,
-                                 MessageType.ACL:           self._message_handler_ACL,
-                                 MessageType.QUERYUSERS:    self._message_handler_QueryUsers,
-                                 MessageType.CRYPTSETUP:    self._message_handler_CryptSetup,
-                                 MessageType.USERLIST:      self._message_handler_UserList,
+                                 MessageType.ACL: self._message_handler_ACL,
+                                 MessageType.QUERYUSERS: self._message_handler_QueryUsers,
+                                 MessageType.CRYPTSETUP: self._message_handler_CryptSetup,
+                                 MessageType.USERLIST: self._message_handler_UserList,
                                  MessageType.PERMISSIONQUERY: self._message_handler_PermissionQuery,
-                                 MessageType.CODECVERSION:  self._message_handler_CodecVersion,
-                                 MessageType.USERSTATS:     self._message_handler_UserStats,
-                                 MessageType.SERVERCONFIG:  self._message_handler_ServerConfig,
+                                 MessageType.CODECVERSION: self._message_handler_CodecVersion,
+                                 MessageType.USERSTATS: self._message_handler_UserStats,
+                                 MessageType.SERVERCONFIG: self._message_handler_ServerConfig,
                                  MessageType.SUGGESTCONFIG: self._message_handler_SuggestConfig,
                                  }
         self.event_handlers = {}
@@ -390,6 +390,9 @@ class Mumpy:
         header = struct.unpack('!B', payload[:1])[0]
         audio_type = (header & 0b11100000) >> 5
         target = header & 0b00011111
+        if target != 0:
+            # TODO: handle this
+            pass  # this is not normal talking, they used an audio target or this is server loopback audio
         payload = payload[1:]
         varint_reader = VarInt(payload)
         if audio_type == AudioType.PING:
@@ -469,7 +472,7 @@ class Mumpy:
             self.udp_socket.close()
             self.log.warning("Timed out waiting for UDP ping response from server. Using TCP for audio traffic.")
             return
-        response_decrypted = self._decrypt(response)
+        self._decrypt(response)  # will raise exception is something goes wrong
         self.udp_socket.settimeout(None)
         self.connection_state = ConnectionState.CONNECTED_UDP
         self.log.debug("Using UDP for audio traffic")
@@ -518,11 +521,11 @@ class Mumpy:
                     message_type = int.from_bytes(self.tcp_message_buffer[0:2], byteorder='big')
                     message_length = int.from_bytes(self.tcp_message_buffer[2:6], byteorder='big')
                     if len(self.tcp_message_buffer) >= 6 + message_length:
-                        message_payload = self.tcp_message_buffer[6:6+message_length]
+                        message_payload = self.tcp_message_buffer[6:6 + message_length]
                     else:  # need to read more, buffer only contains partial packet
                         self.tcp_message_buffer += input_socket.recv(4096)
                         continue
-                    self.tcp_message_buffer = self.tcp_message_buffer[6+message_length:]
+                    self.tcp_message_buffer = self.tcp_message_buffer[6 + message_length:]
 
                     try:
                         self.message_handlers[message_type](message_payload)
@@ -603,8 +606,8 @@ class Mumpy:
         self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
         try:
             import opuslib
-            self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}
-            self.audio_encoders = {AudioType.OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+            self.audio_decoders = {AudioType.OPUS: opuslib.Decoder(48000, 1)}
+            self.audio_encoders = {AudioType.OPUS: opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
             self.audio_enabled = True
             self._fire_event(MumpyEvent.AUDIO_ENABLED)
         except Exception:
@@ -854,8 +857,8 @@ class Mumpy:
         frame_width = sample_width
         encoded_audio = []
         while len(pcm) > 0:
-            to_encode = pcm[:frame_size*frame_width]
-            pcm = pcm[frame_size*frame_width:]
+            to_encode = pcm[:frame_size * frame_width]
+            pcm = pcm[frame_size * frame_width:]
             encoded_audio.append(self.audio_encoders[self.preferred_audio_codec].encode(to_encode, frame_size))
         header = struct.pack('!B', self.preferred_audio_codec << 5 | self.audio_target)
         for frame in encoded_audio[:-1]:
