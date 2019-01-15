@@ -1,4 +1,4 @@
-# Mumpy [![Docs](https://readthedocs.org/projects/mumpy/badge/?version=latest)](https://mumpy.readthedocs.io/)
+# Mumpy [![Docs](https://readthedocs.org/projects/mumpy/badge/?version=latest)](https://mumpy.readthedocs.io/) [![CI](https://api.travis-ci.com/ianling/mumpy.svg?branch=master)](https://travis-ci.com/ianling/mumpy/branches#)
 
 Mumpy is a Mumble client framework written in Python 3.
 
