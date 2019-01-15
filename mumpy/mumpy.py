@@ -6,6 +6,7 @@ from .event_handler import EventHandler
 from .mumblecrypto import MumbleCrypto
 from .user import User
 from .varint import VarInt
+from ipaddress import IPv6Address
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
@@ -344,11 +345,20 @@ class Mumpy:
 
     # message type 22
     def _message_handler_UserStats(self, payload):
-        # TODO: Send these to the server to give server your stats? Documentation on this feature is unclear
         message = mumble_pb2.UserStats()
         message.ParseFromString(payload)
         user = self.get_user_by_id(message.session)
         user.update(message, prefix='stats')
+        if message.HasField('address'):
+            # murmur sends IP addresses encoded in 16 bytes.
+            # IPv4 addresses fill most of the array with zeroes, followed by 255, 255, #, #, #, #
+            # (where #'s are the four octets of the IPv4 address, in )
+            ip = struct.unpack('16B', message.address)
+            if ip[0:12] == (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255):
+                ip = '.'.join(map(str, ip[12:]))
+            else:
+                ip = IPv6Address(bytes(ip)).compressed
+            user.stats.address = ip
         self._fire_event(MumpyEvent.USER_STATS_UPDATED, message)
 
     # message type 23 -- RequestBlob

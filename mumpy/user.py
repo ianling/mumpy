@@ -7,15 +7,28 @@ class User(MumbleProtocolObject):
         self.audio_buffer = b''
         self.audio_buffer_dict = {}
         self.channel_id = 0
-        self.stats = {}
+        self.stats = MumbleProtocolObject(server)
         super().__init__(server, message)
 
     @property
     def session_id(self):
         """
         This user's session ID.
+
+        Returns:
+            int: session ID
         """
         return self.session
+
+    @property
+    def channel(self):
+        """
+        This user's current channel.
+
+        Returns:
+            Channel: the user's current channel
+        """
+        return self._server.get_channel_by_id(self.channel_id)
 
     def update_texture(self):
         """
@@ -122,3 +135,12 @@ class User(MumbleProtocolObject):
             None
         """
         self._server.register_user(self)
+
+    def update_stats(self):
+        """
+        Requests updated stats about the user from the server.
+
+        Returns:
+            None
+        """
+        self._server.update_user_stats(self)

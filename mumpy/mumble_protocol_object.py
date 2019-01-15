@@ -2,7 +2,7 @@ import weakref
 
 
 class MumbleProtocolObject:
-    def __init__(self, server, message):
+    def __init__(self, server, message=None):
         """
         Args:
             server(Mumpy): the Mumpy instance that this object originated from
@@ -10,7 +10,11 @@ class MumbleProtocolObject:
         """
         # keep a weak reference to the parent object (the Mumpy instance)
         self._server = weakref.proxy(server)
-        self.update(message)
+        if message is not None:
+            self.update(message)
+
+    def __str__(self):
+        return self.name
 
     def update(self, message, prefix=None):
         """
