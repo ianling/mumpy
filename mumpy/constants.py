@@ -73,6 +73,11 @@ class Permission(metaclass=MumpyEnum):
     ALL = 0xf07ff
 
 
+class PresetVoiceTarget(metaclass=MumpyEnum):
+    DEFAULT = 0
+    SERVER_LOOPBACK = 31
+
+
 class AudioType(metaclass=MumpyEnum):
     """
     The audio codecs supported by the Mumble protocol.

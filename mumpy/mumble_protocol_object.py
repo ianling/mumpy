@@ -2,15 +2,24 @@ import weakref
 
 
 class MumbleProtocolObject:
-    def __init__(self, server, message):
+    def __init__(self, server, message=None):
+        """
+        Args:
+            server(Mumpy): the Mumpy instance that this object originated from
+            message(protobuf message): the protobuf message that created this object
+        """
         # keep a weak reference to the parent object (the Mumpy instance)
         self._server = weakref.proxy(server)
-        self.update(message)
+        if message is not None:
+            self.update(message)
+
+    def __str__(self):
+        return self.name
 
     def update(self, message, prefix=None):
         """
         Uses a protobuf message to update the object's fields.
-        
+
         Example: <obj>.update(message, prefix="stats") will store all the fields in message at <obj>.stats.*
 
         Args:

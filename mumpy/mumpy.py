@@ -1,11 +1,12 @@
-from mumpy.channel import Channel
-from mumpy import mumble_pb2
-from mumpy.constants import ConnectionState, MessageType, Permission, MumpyEvent, AudioType, PROTOCOL_VERSION, OS_VERSION_STRING,\
-    RELEASE_STRING, OS_STRING, PING_INTERVAL
-from mumpy.event_handler import EventHandler
-from mumpy.mumblecrypto import MumbleCrypto
-from mumpy.user import User
-from mumpy.varint import VarInt
+from .channel import Channel
+from . import mumble_pb2
+from .constants import ConnectionState, MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, \
+    OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL
+from .event_handler import EventHandler
+from .mumblecrypto import MumbleCrypto
+from .user import User
+from .varint import VarInt
+from ipaddress import IPv6Address
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
@@ -24,26 +25,26 @@ class Mumpy:
         self.channels = {}
         self.users = {}
         self.session_id = None
-        self.message_handlers = {MessageType.VERSION:       self._message_handler_Version,
-                                 MessageType.UDPTUNNEL:     self._message_handler_UDPTunnel,
-                                 MessageType.PING:          self._message_handler_Ping,
-                                 MessageType.REJECT:        self._message_handler_Reject,
-                                 MessageType.SERVERSYNC:    self._message_handler_ServerSync,
+        self.message_handlers = {MessageType.VERSION: self._message_handler_Version,
+                                 MessageType.UDPTUNNEL: self._message_handler_UDPTunnel,
+                                 MessageType.PING: self._message_handler_Ping,
+                                 MessageType.REJECT: self._message_handler_Reject,
+                                 MessageType.SERVERSYNC: self._message_handler_ServerSync,
                                  MessageType.CHANNELREMOVE: self._message_handler_ChannelRemove,
-                                 MessageType.CHANNELSTATE:  self._message_handler_ChannelState,
-                                 MessageType.USERREMOVE:    self._message_handler_UserRemove,
-                                 MessageType.USERSTATE:     self._message_handler_UserState,
-                                 MessageType.BANLIST:       self._message_handler_BanList,
-                                 MessageType.TEXTMESSAGE:   self._message_handler_TextMessage,
+                                 MessageType.CHANNELSTATE: self._message_handler_ChannelState,
+                                 MessageType.USERREMOVE: self._message_handler_UserRemove,
+                                 MessageType.USERSTATE: self._message_handler_UserState,
+                                 MessageType.BANLIST: self._message_handler_BanList,
+                                 MessageType.TEXTMESSAGE: self._message_handler_TextMessage,
                                  MessageType.PERMISSIONDENIED: self._message_handler_PermissionDenied,
-                                 MessageType.ACL:           self._message_handler_ACL,
-                                 MessageType.QUERYUSERS:    self._message_handler_QueryUsers,
-                                 MessageType.CRYPTSETUP:    self._message_handler_CryptSetup,
-                                 MessageType.USERLIST:      self._message_handler_UserList,
+                                 MessageType.ACL: self._message_handler_ACL,
+                                 MessageType.QUERYUSERS: self._message_handler_QueryUsers,
+                                 MessageType.CRYPTSETUP: self._message_handler_CryptSetup,
+                                 MessageType.USERLIST: self._message_handler_UserList,
                                  MessageType.PERMISSIONQUERY: self._message_handler_PermissionQuery,
-                                 MessageType.CODECVERSION:  self._message_handler_CodecVersion,
-                                 MessageType.USERSTATS:     self._message_handler_UserStats,
-                                 MessageType.SERVERCONFIG:  self._message_handler_ServerConfig,
+                                 MessageType.CODECVERSION: self._message_handler_CodecVersion,
+                                 MessageType.USERSTATS: self._message_handler_UserStats,
+                                 MessageType.SERVERCONFIG: self._message_handler_ServerConfig,
                                  MessageType.SUGGESTCONFIG: self._message_handler_SuggestConfig,
                                  }
         self.event_handlers = {}
@@ -322,7 +323,6 @@ class Mumpy:
 
     # message type 19 -- VoiceTarget
     # not sent by server, no handler needed
-    # TODO: handle sending these to the server
 
     # message type 20
     def _message_handler_PermissionQuery(self, payload):
@@ -345,11 +345,20 @@ class Mumpy:
 
     # message type 22
     def _message_handler_UserStats(self, payload):
-        # TODO: Send these to the server to give server your stats? Documentation on this feature is unclear
         message = mumble_pb2.UserStats()
         message.ParseFromString(payload)
         user = self.get_user_by_id(message.session)
         user.update(message, prefix='stats')
+        if message.HasField('address'):
+            # murmur sends IP addresses encoded in 16 bytes.
+            # IPv4 addresses fill most of the array with zeroes, followed by 255, 255, #, #, #, #
+            # (where #'s are the four octets of the IPv4 address, in )
+            ip = struct.unpack('16B', message.address)
+            if ip[0:12] == (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 255):
+                ip = '.'.join(map(str, ip[12:]))
+            else:
+                ip = IPv6Address(bytes(ip)).compressed
+            user.stats.address = ip
         self._fire_event(MumpyEvent.USER_STATS_UPDATED, message)
 
     # message type 23 -- RequestBlob
@@ -381,6 +390,9 @@ class Mumpy:
         header = struct.unpack('!B', payload[:1])[0]
         audio_type = (header & 0b11100000) >> 5
         target = header & 0b00011111
+        if target != 0:
+            # TODO: handle this
+            pass  # this is not normal talking, they used an audio target or this is server loopback audio
         payload = payload[1:]
         varint_reader = VarInt(payload)
         if audio_type == AudioType.PING:
@@ -460,7 +472,7 @@ class Mumpy:
             self.udp_socket.close()
             self.log.warning("Timed out waiting for UDP ping response from server. Using TCP for audio traffic.")
             return
-        response_decrypted = self._decrypt(response)
+        self._decrypt(response)  # will raise exception is something goes wrong
         self.udp_socket.settimeout(None)
         self.connection_state = ConnectionState.CONNECTED_UDP
         self.log.debug("Using UDP for audio traffic")
@@ -509,11 +521,11 @@ class Mumpy:
                     message_type = int.from_bytes(self.tcp_message_buffer[0:2], byteorder='big')
                     message_length = int.from_bytes(self.tcp_message_buffer[2:6], byteorder='big')
                     if len(self.tcp_message_buffer) >= 6 + message_length:
-                        message_payload = self.tcp_message_buffer[6:6+message_length]
+                        message_payload = self.tcp_message_buffer[6:6 + message_length]
                     else:  # need to read more, buffer only contains partial packet
                         self.tcp_message_buffer += input_socket.recv(4096)
                         continue
-                    self.tcp_message_buffer = self.tcp_message_buffer[6+message_length:]
+                    self.tcp_message_buffer = self.tcp_message_buffer[6 + message_length:]
 
                     try:
                         self.message_handlers[message_type](message_payload)
@@ -552,7 +564,6 @@ class Mumpy:
         When an event is fired, any functions added as handlers for that event type will be run with two arguments,
         the Mumpy instance that the event originated from (in case you have multiple instances running), as well as
         the protobuf message that caused the event to be fired.
-        TODO: fix this part of the docs:
 
         Example::
 
@@ -564,7 +575,7 @@ class Mumpy:
             bot.add_event_handler(MumpyEvent.USER_KICKED, kick_handler_function)
 
         Args:
-            event_type(MumpyEvent.EVENT_TYPE): an event from the MumpyEvent enum
+            event_type(str): an event from the :class:`~mumpy.constants.MumpyEvent` enum
             function_handle(function): the function to run when the specified event is fired
 
         Returns:
@@ -595,8 +606,8 @@ class Mumpy:
         self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
         try:
             import opuslib
-            self.audio_decoders = {AudioType.OPUS:    opuslib.Decoder(48000, 1)}
-            self.audio_encoders = {AudioType.OPUS:    opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+            self.audio_decoders = {AudioType.OPUS: opuslib.Decoder(48000, 1)}
+            self.audio_encoders = {AudioType.OPUS: opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
             self.audio_enabled = True
             self._fire_event(MumpyEvent.AUDIO_ENABLED)
         except Exception:
@@ -645,14 +656,14 @@ class Mumpy:
     def get_users(self):
         """
         Returns:
-            dict: a dictionary of User objects and IDs in the form users[id] = User()
+            dict: a dictionary of :class:`~mumpy.user.User`objects and IDs in the form ``<Mumpy>.get_users()[id] = User()``
         """
         return self.users
 
     def get_channels(self):
         """
         Returns:
-            dict: a dictionary of Channel objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
+            dict: a dictionary of :class:`~mumpy.channel.Channel` objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
         """
         return self.channels
 
@@ -846,8 +857,8 @@ class Mumpy:
         frame_width = sample_width
         encoded_audio = []
         while len(pcm) > 0:
-            to_encode = pcm[:frame_size*frame_width]
-            pcm = pcm[frame_size*frame_width:]
+            to_encode = pcm[:frame_size * frame_width]
+            pcm = pcm[frame_size * frame_width:]
             encoded_audio.append(self.audio_encoders[self.preferred_audio_codec].encode(to_encode, frame_size))
         header = struct.pack('!B', self.preferred_audio_codec << 5 | self.audio_target)
         for frame in encoded_audio[:-1]:
@@ -980,22 +991,21 @@ class Mumpy:
         message_payload.channel_description.extend(channel_descriptions)
         self._send_payload(MessageType.REQUESTBLOB, message_payload)
 
-    def move_user_to_channel(self, users, channel):
+    def move_user_to_channel(self, user, channel):
         """
-        Moves each User in users to the specified Channel.
+        Moves the User to the specified Channel.
 
         Args:
-            users(iterable): a list of Users to move
-            channel(Channel): the channel to move the Users to
+            user(User): the User to move
+            channel(Channel): the channel to move the User to
 
         Returns:
             None
         """
-        for user in users:
-            message_payload = mumble_pb2.UserState()
-            message_payload.session = user.session_id
-            message_payload.channel_id = channel.id
-            self._send_payload(MessageType.USERSTATE, message_payload)
+        message_payload = mumble_pb2.UserState()
+        message_payload.session = user.session_id
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.USERSTATE, message_payload)
 
     def join_channel(self, channel):
         """
@@ -1172,7 +1182,38 @@ class Mumpy:
         self._send_payload(MessageType.USERLIST, message_payload)
 
     def rename_channel(self, channel, new_name):
+        """
+        Changes a channel's name to new_name.
+
+        Args:
+            channel(Channel): the channel to rename
+            new_name(str): the new name
+
+        Returns:
+            None
+        """
         message_payload = mumble_pb2.ChannelState()
         message_payload.channel_id = channel.id
         message_payload.name = new_name
         self._send_payload(MessageType.CHANNELSTATE, message_payload)
+
+    def remove_channel(self, channel):
+        """
+        Removes a channel.
+
+        Args:
+            channel(Channel): the channel to remove
+
+        Returns:
+            None
+        """
+        message_payload = mumble_pb2.ChannelRemove()
+        message_payload.channel_id = channel.id
+        self._send_payload(MessageType.CHANNELREMOVE, message_payload)
+
+    def configure_voice_target(self, id, users=(), channels=(), acl_groups=(), follow_links=False,
+                               children=False):
+        message_payload = mumble_pb2.VoiceTarget()
+        if len(users) > 0:
+            users_target = message_payload.targets.add()
+            users_target.session.extend(users)

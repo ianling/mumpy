@@ -1,0 +1,11 @@
+language: python
+python:
+    - 3.6
+notifications:
+    email: false
+
+before_install:
+    - pip3 install flake8
+
+script:
+    - python3 -m flake8 . --ignore=E501

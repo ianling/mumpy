@@ -1,4 +1,4 @@
-# Mumpy [![Docs](https://readthedocs.org/projects/mumpy/badge/?version=latest)](https://mumpy.readthedocs.io/)
+# Mumpy [![Docs](https://readthedocs.org/projects/mumpy/badge/?version=latest)](https://mumpy.readthedocs.io/) [![CI](https://api.travis-ci.com/ianling/mumpy.svg?branch=master)](https://travis-ci.com/ianling/mumpy/branches#)
 
 Mumpy is a Mumble client framework written in Python 3.
 
@@ -30,6 +30,7 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
 * Mixdown audio
+* Send server the client's connection stats
 * A better way to store audio than a list of potentially massive byte strings on each user
 * Add function to manually kill UDP connection and switch back to TCP
 * Handle position data in audio transmissions
