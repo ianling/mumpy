@@ -178,6 +178,11 @@ class MumpyEvent(metaclass=MumpyEnum):
     Fired when a user registers on the server.
     """
 
+    USER_UNREGISTERED = 'user_unregistered'
+    """
+    Fired when a user is unregistered on the server.
+    """
+
     USER_COMMENT_UPDATED = 'user_comment_updated'
     """
     Fired when a user changes their comment.

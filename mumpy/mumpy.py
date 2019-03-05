@@ -212,7 +212,11 @@ class Mumpy:
                 elif field_changed == 'texture':
                     events_to_fire.append(MumpyEvent.USER_AVATAR_UPDATED)
                 elif field_changed == 'user_id':
-                    events_to_fire.append(MumpyEvent.USER_REGISTERED)
+                    if message.user_id == 4294967295:
+                        # murmur sends back the maximum value of a uint32 to signify that a user was unregistered
+                        events_to_fire.append(MumpyEvent.USER_UNREGISTERED)
+                    else:
+                        events_to_fire.append(MumpyEvent.USER_REGISTERED)
                 elif field_changed == 'self_mute':
                     if user.self_mute == message.self_mute:
                         # they didn't change this field.
@@ -653,6 +657,10 @@ class Mumpy:
                     self.udp_socket.close()
         self.connection_state = ConnectionState.DISCONNECTED
 
+    @property
+    def user(self):
+        return self.get_user_by_id(self.session_id)
+
     def get_users(self):
         """
         Returns:
@@ -667,17 +675,19 @@ class Mumpy:
         """
         return self.channels
 
-    def get_current_channel_id(self):
+    @property
+    def channel_id(self):
         """
         Returns:
             int: the ID of the channel the bot is currently in"""
-        return self.get_user_by_id(self.session_id).channel_id
+        return self.user.channel_id
 
-    def get_current_channel(self):
+    @property
+    def channel(self):
         """
         Returns:
             Channel: the Channel the bot is currently in."""
-        return self.get_channel_by_id(self.get_current_channel_id())
+        return self.get_channel_by_id(self.channel_id)
 
     def get_channel_by_id(self, channel_id):
         """
@@ -724,27 +734,6 @@ class Mumpy:
             if user.name == name:
                 return user
         raise IndexError(f"User with the specified name does not exist: {name}")
-
-    def get_current_session_id(self):
-        """
-        Returns:
-            int: the :py:class:`Mumpy` instance's session ID
-        """
-        return self.session_id
-
-    def get_current_username(self):
-        """
-        Returns:
-            str: the :py:class:`Mumpy` instance's username
-        """
-        return self.username
-
-    def get_self_user(self):
-        """
-        Returns:
-            User: the Mumpy instance's User object
-        """
-        return self.get_user_by_id(self.session_id)
 
     def kick_user(self, user, reason="", ban=False):
         """
@@ -1017,7 +1006,7 @@ class Mumpy:
         Returns:
             None
         """
-        self.move_user_to_channel(self.get_self_user(), channel)
+        self.move_user_to_channel(self.user, channel)
 
     def register_user(self, user):
         """
@@ -1034,6 +1023,25 @@ class Mumpy:
         message_payload.user_id = 0
         self._send_payload(MessageType.USERSTATE, message_payload)
 
+    def unregister_user(self, user):
+        """
+        Unregisters a User on the server.
+
+        Args:
+            user(User): the User to unregister
+
+        Returns:
+            None
+        """
+        message_payload = mumble_pb2.UserList()
+        message_payload.users.add()
+        try:
+            message_payload.users[0].user_id = user.user_id
+        except AttributeError:
+            # user is already not registered
+            return
+        self._send_payload(MessageType.USERLIST, message_payload)
+
     def register_self(self):
         """
         Registers the Mumpy instance on the server.
@@ -1041,7 +1049,16 @@ class Mumpy:
         Returns:
             None
         """
-        self.register_user(self.get_user_by_id(self.session_id))
+        self.register_user(self.user)
+
+    def unregister_self(self):
+        """
+        Unregisters the Mumpy instance on the server.
+
+        Returns:
+            None
+        """
+        self.unregister_user(self.user)
 
     def mute_user(self, user):
         """
