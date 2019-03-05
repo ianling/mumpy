@@ -136,6 +136,15 @@ class User(MumbleProtocolObject):
         """
         self._server.register_user(self)
 
+    def unregister(self):
+        """
+        Unregisters the user on the server.
+
+        Returns:
+            None
+        """
+        self._server.unregister_user(self)
+
     def update_stats(self):
         """
         Requests updated stats about the user from the server.
