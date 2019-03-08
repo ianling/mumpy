@@ -20,6 +20,7 @@ import wave
 
 class Mumpy:
     def __init__(self, username="mumble-bot", password=""):
+        # TODO: Make a lot of these private
         self.username = username
         self.password = password
         self.channels = {}
@@ -59,6 +60,7 @@ class Mumpy:
         self.tcp_connection_thread = None
         self.udp_connection_thread = None
         self.ping_thread = None
+        self.event_handler_thread = None
         self.ssl_socket = None
         self.udp_socket = None
         self.audio_enabled = False
@@ -212,7 +214,7 @@ class Mumpy:
                 elif field_changed == 'texture':
                     events_to_fire.append(MumpyEvent.USER_AVATAR_UPDATED)
                 elif field_changed == 'user_id':
-                    if message.user_id == 4294967295:
+                    if message.user_id == 0xFFFFFFFF:
                         # murmur sends back the maximum value of a uint32 to signify that a user was unregistered
                         events_to_fire.append(MumpyEvent.USER_UNREGISTERED)
                     else:
@@ -379,6 +381,9 @@ class Mumpy:
     # message type 25
     def _message_handler_SuggestConfig(self, payload):
         # nothing important in this message type, maybe implement in the future
+        pass
+
+    def _start_event_handler_thread(self):
         pass
 
     def _handle_audio(self, payload):
@@ -903,7 +908,7 @@ class Mumpy:
         message_payload = mumble_pb2.TextMessage()
         message_payload.message = message
         if len(channels) == 0 and len(users) == 0:
-            message_payload.channel_id.append(self.get_current_channel_id())
+            message_payload.channel_id.append(self.channel_id)
         if channels:
             message_payload.channel_id.extend([channel.id for channel in channels])
         if users:
