@@ -22,12 +22,11 @@ import wave
 
 class Mumpy:
     def __init__(self, username="mumble-bot", password=""):
-        # TODO: Make a lot of these private
         self.username = username
         self.password = password
         self._channels = {}
         self._users = {}
-        self._session_id = None
+        self.session_id = None
         self._message_handlers = {MessageType.VERSION: self._message_handler_version,
                                   MessageType.UDPTUNNEL: self._message_handler_udp_tunnel,
                                   MessageType.PING: self._message_handler_ping,
@@ -141,7 +140,7 @@ class Mumpy:
     def _message_handler_server_sync(self, payload):
         message = mumble_pb2.ServerSync()
         message.ParseFromString(payload)
-        self._session_id = message.session
+        self.session_id = message.session
         self._max_bandwidth = message.max_bandwidth
         self._log.info('Connected to server')
         self._udp_connection_thread = Thread(target=self._start_udp_connection)
@@ -153,7 +152,7 @@ class Mumpy:
         message = mumble_pb2.ChannelRemove()
         message.ParseFromString(payload)
         try:
-            channel_name = self.get_channel_by_id(message.channel_id).name
+            channel_name = self.get_channel(message.channel_id).name
             self._log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
             del(self._channels[message.channel_id])
             self._fire_event(EventType.CHANNEL_REMOVED, message)
@@ -165,7 +164,7 @@ class Mumpy:
         message = mumble_pb2.ChannelState()
         message.ParseFromString(payload)
         try:
-            channel = self.get_channel_by_id(message.channel_id)
+            channel = self.get_channel(message.channel_id)
             channel.update(message)
             self._fire_event(EventType.CHANNEL_UPDATED, message)  # TODO: be more specific, what changed?
         except KeyError:
@@ -182,14 +181,14 @@ class Mumpy:
         """
         message = mumble_pb2.UserRemove()
         message.ParseFromString(payload)
-        if message.session == self._session_id:
+        if message.session == self.session_id:
             self._connection_state = ConnectionState.DISCONNECTED
         try:
-            session_username = self.get_user_by_id(message.session).name
+            session_username = self.get_user(message.session).name
         except KeyError:
             return
         if message.HasField('actor'):
-            actor_username = self.get_user_by_id(message.actor).name
+            actor_username = self.get_user(message.actor).name
             if message.ban:
                 action = "banned"
                 self._fire_event(EventType.USER_BANNED, message)
@@ -208,7 +207,7 @@ class Mumpy:
         message = mumble_pb2.UserState()
         message.ParseFromString(payload)
         try:
-            user = self.get_user_by_id(message.session)
+            user = self.get_user(message.session)
             message_fields = message.ListFields()
             events_to_fire = []
             fields_changed = [field.name for field, value in message_fields]
@@ -341,7 +340,7 @@ class Mumpy:
         if message.flush:
             for channel in self._channels.values():
                 channel.permissions = None
-        self.get_channel_by_id(message.channel_id).permissions = message.permissions
+        self.get_channel(message.channel_id).permissions = message.permissions
         self._fire_event(EventType.CHANNEL_PERMISSIONS_UPDATED, message)
 
     # message type 21
@@ -357,7 +356,7 @@ class Mumpy:
     def _message_handler_user_stats(self, payload):
         message = mumble_pb2.UserStats()
         message.ParseFromString(payload)
-        user = self.get_user_by_id(message.session)
+        user = self.get_user(message.session)
         user.update(message, prefix='stats')
         if message.HasField('address'):
             # murmur sends IP addresses encoded in 16 bytes.
@@ -426,7 +425,7 @@ class Mumpy:
             voice_frame = varint_reader.get_current_data()[:size]  # anything left after size is position data
             # TODO: Handle position data
             pcm = self._audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
-            user = self.get_user_by_id(session_id)
+            user = self.get_user(session_id)
             user.audio_buffer += pcm
             user.audio_buffer_dict[sequence_number] = pcm
             if terminate:
@@ -671,19 +670,19 @@ class Mumpy:
         Returns:
             User: the bot's User
         """
-        return self.get_user_by_id(self._session_id)
+        return self.get_user(self.session_id)
 
     def get_users(self):
         """
         Returns:
-            dict: a dictionary of :class:`~mumpy.user.User`objects and IDs in the form ``<Mumpy>.get_users()[id] = User()``
+            dict: a dictionary of :class:`.User` objects and IDs in the form ``{<user_id>: User(), ...}``
         """
         return self._users
 
     def get_channels(self):
         """
         Returns:
-            dict: a dictionary of :class:`~mumpy.channel.Channel` objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
+            dict: a dictionary of :class:`.Channel` objects and IDs in the form ``{<channel_id>: Channel(), ...}``
         """
         return self._channels
 
@@ -699,11 +698,11 @@ class Mumpy:
     def channel(self):
         """
         Returns:
-            Channel: the Channel the bot is currently in.
+            Channel: the Channel the bot is currently in
         """
-        return self.get_channel_by_id(self.channel_id)
+        return self.get_channel(self.channel_id)
 
-    def get_channel_by_id(self, channel_id):
+    def _get_channel_by_id(self, channel_id):
         """
         Args:
             channel_id(int): the ID of the channel
@@ -713,7 +712,7 @@ class Mumpy:
         """
         return self._channels[channel_id]
 
-    def get_channel_by_name(self, name):
+    def _get_channel_by_name(self, name):
         """
         Args:
             name(str): the name of the channel
@@ -726,7 +725,22 @@ class Mumpy:
                 return channel
         raise IndexError(f"Channel with the specified name does not exist: {name}")
 
-    def get_user_by_id(self, session_id):
+    def get_channel(self, identifier):
+        """
+        Args:
+            identifier(int, str): the channel's ID or name
+
+        Returns:
+            Channel:
+        """
+        if isinstance(identifier, int):
+            return self._get_channel_by_id(identifier)
+        elif isinstance(identifier, str):
+            return self._get_channel_by_name(identifier)
+        else:
+            raise TypeError("identifier must be int or str.")
+
+    def _get_user_by_id(self, session_id):
         """
         Args:
             session_id(int): the session ID of the user
@@ -736,7 +750,7 @@ class Mumpy:
         """
         return self._users[session_id]
 
-    def get_user_by_name(self, name):
+    def _get_user_by_name(self, name):
         """
         Args:
             name(str): the name of the user
@@ -748,6 +762,21 @@ class Mumpy:
             if user.name == name:
                 return user
         raise IndexError(f"User with the specified name does not exist: {name}")
+
+    def get_user(self, identifier):
+        """
+        Args:
+            identifier(int, str): the user's ID or name
+
+        Returns:
+            User:
+        """
+        if isinstance(identifier, int):
+            return self._get_user_by_id(identifier)
+        elif isinstance(identifier, str):
+            return self._get_user_by_name(identifier)
+        else:
+            raise TypeError("identifier must be int or str.")
 
     def kick_user(self, user, reason="", ban=False):
         """
@@ -779,14 +808,14 @@ class Mumpy:
         Returns:
             None
         """
-        user = self.get_user_by_name(name)
+        user = self.get_user(name)
         self.kick_user(user, reason=reason, ban=ban)
 
     def clear_all_audio_logs(self):
         """
         Clears every user's audio log, removing all received audio transmissions from memory.
         """
-        for session_id, user in self._users.items():
+        for session_id, user in self.get_users().items():
             user.audio_log = []
 
     @staticmethod
@@ -1143,7 +1172,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self._session_id
+        message_payload.session = self.session_id
         message_payload.self_mute = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
@@ -1155,7 +1184,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self._session_id
+        message_payload.session = self.session_id
         message_payload.self_deaf = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
@@ -1167,7 +1196,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self._session_id
+        message_payload.session = self.session_id
         message_payload.self_mute = False
         message_payload.mute = False
         self._send_payload(MessageType.USERSTATE, message_payload)
@@ -1180,7 +1209,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self._session_id
+        message_payload.session = self.session_id
         message_payload.self_deaf = False
         message_payload.deaf = False
         self._send_payload(MessageType.USERSTATE, message_payload)

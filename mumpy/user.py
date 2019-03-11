@@ -28,7 +28,7 @@ class User(MumbleProtocolObject):
         Returns:
             Channel: the user's current channel
         """
-        return self._server.get_channel_by_id(self.channel_id)
+        return self._server.get_channel(self.channel_id)
 
     def update_texture(self):
         """
@@ -47,15 +47,6 @@ class User(MumbleProtocolObject):
             None
         """
         self._server.request_blob(user_comments=[self.session_id])
-
-    def get_channel(self):
-        """
-        Get this user's current Channel.
-
-        Returns:
-            Channel: the user's current Channel
-        """
-        return self._server.get_channel_by_id(self.channel_id)
 
     def clear_audio_log(self):
         """
