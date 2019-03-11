@@ -29,7 +29,6 @@ class MumbleProtocolObject:
         Returns:
             None
         """
-        print(message)  # for debugging
         updated_fields = message.ListFields()
         if prefix is None:
             object_to_update = self
