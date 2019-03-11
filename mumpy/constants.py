@@ -188,9 +188,9 @@ class EventType(metaclass=MumpyEnum):
     Fired when a user changes their comment.
     """
 
-    USER_AVATAR_UPDATED = 'user_avatar_updated'
+    USER_TEXTURE_UPDATED = 'user_texture_updated'
     """
-    Fired when a user changes their avatar.
+    Fired when a user changes their texture (avatar).
     """
 
     USER_SELF_MUTED = 'user_self_muted'

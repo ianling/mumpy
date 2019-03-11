@@ -6,8 +6,7 @@ Mumpy has not been released on PyPI yet, so it must be cloned from the Git repo 
 .. code:: bash
 
     $ git clone https://github.com/ianling/mumpy.git
-    $ cd mumpy/
-    $ python setup.py install
+    $ pip3 install --user ./mumpy
 
 Requirements
 ------------

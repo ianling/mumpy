@@ -1,11 +1,12 @@
-from .channel import Channel
-from . import mumble_pb2
-from .constants import ConnectionState, MessageType, EventType, AudioType, PROTOCOL_VERSION, \
+from mumpy import mumble_pb2
+from mumpy.channel import Channel
+from mumpy.constants import ConnectionState, MessageType, EventType, AudioType, PROTOCOL_VERSION, \
     OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL
-from .event_handler import EventHandler
-from .mumblecrypto import MumbleCrypto
-from .user import User
-from .varint import VarInt
+from mumpy.event_handler import EventHandler
+from mumpy.mumblecrypto import MumbleCrypto
+from mumpy.user import User
+from mumpy.varint import VarInt
+
 from ipaddress import IPv6Address
 from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
@@ -24,63 +25,64 @@ class Mumpy:
         # TODO: Make a lot of these private
         self.username = username
         self.password = password
-        self.channels = {}
-        self.users = {}
-        self.session_id = None
-        self.message_handlers = {MessageType.VERSION: self._message_handler_version,
-                                 MessageType.UDPTUNNEL: self._message_handler_udp_tunnel,
-                                 MessageType.PING: self._message_handler_ping,
-                                 MessageType.REJECT: self._message_handler_reject,
-                                 MessageType.SERVERSYNC: self._message_handler_server_sync,
-                                 MessageType.CHANNELREMOVE: self._message_handler_channel_remove,
-                                 MessageType.CHANNELSTATE: self._message_handler_channel_state,
-                                 MessageType.USERREMOVE: self._message_handler_user_remove,
-                                 MessageType.USERSTATE: self._message_handler_user_state,
-                                 MessageType.BANLIST: self._message_handler_ban_list,
-                                 MessageType.TEXTMESSAGE: self._message_handler_text_message,
-                                 MessageType.PERMISSIONDENIED: self._message_handler_permission_denied,
-                                 MessageType.ACL: self._message_handler_acl,
-                                 MessageType.QUERYUSERS: self._message_handler_query_users,
-                                 MessageType.CRYPTSETUP: self._message_handler_crypt_setup,
-                                 MessageType.USERLIST: self._message_handler_user_list,
-                                 MessageType.PERMISSIONQUERY: self._message_handler_permission_query,
-                                 MessageType.CODECVERSION: self._message_handler_codec_version,
-                                 MessageType.USERSTATS: self._message_handler_user_stats,
-                                 MessageType.SERVERCONFIG: self._message_handler_server_config,
-                                 MessageType.SUGGESTCONFIG: self._message_handler_suggest_config,
-                                 }
-        self.event_handlers = {}
+        self._channels = {}
+        self._users = {}
+        self._session_id = None
+        self._message_handlers = {MessageType.VERSION: self._message_handler_version,
+                                  MessageType.UDPTUNNEL: self._message_handler_udp_tunnel,
+                                  MessageType.PING: self._message_handler_ping,
+                                  MessageType.REJECT: self._message_handler_reject,
+                                  MessageType.SERVERSYNC: self._message_handler_server_sync,
+                                  MessageType.CHANNELREMOVE: self._message_handler_channel_remove,
+                                  MessageType.CHANNELSTATE: self._message_handler_channel_state,
+                                  MessageType.USERREMOVE: self._message_handler_user_remove,
+                                  MessageType.USERSTATE: self._message_handler_user_state,
+                                  MessageType.BANLIST: self._message_handler_ban_list,
+                                  MessageType.TEXTMESSAGE: self._message_handler_text_message,
+                                  MessageType.PERMISSIONDENIED: self._message_handler_permission_denied,
+                                  MessageType.ACL: self._message_handler_acl,
+                                  MessageType.QUERYUSERS: self._message_handler_query_users,
+                                  MessageType.CRYPTSETUP: self._message_handler_crypt_setup,
+                                  MessageType.USERLIST: self._message_handler_user_list,
+                                  MessageType.PERMISSIONQUERY: self._message_handler_permission_query,
+                                  MessageType.CODECVERSION: self._message_handler_codec_version,
+                                  MessageType.USERSTATS: self._message_handler_user_stats,
+                                  MessageType.SERVERCONFIG: self._message_handler_server_config,
+                                  MessageType.SUGGESTCONFIG: self._message_handler_suggest_config,
+                                  }
+        self._event_handlers = {}
         for event in EventType:
-            self.event_handlers[event] = EventHandler()
-        self.address = None
-        self.port = None
-        self.certfile = None
-        self.keyfile = None
-        self.keypassword = None
-        self.log = None
-        self.tcp_connection_thread = None
-        self.udp_connection_thread = None
-        self.ping_thread = None
-        self.event_handler_thread = None
+            self._event_handlers[event] = EventHandler()
+        self._address = None
+        self._port = None
+        self._certfile = None
+        self._keyfile = None
+        self._keypassword = None
+        self._log = None
+        self._tcp_connection_thread = None
+        self._udp_connection_thread = None
+        self._tcp_message_buffer = None
+        self._ping_thread = None
+        self._event_handler_thread = None
         self._event_queue = queue.Queue()
-        self.ssl_socket = None
-        self.udp_socket = None
-        self.audio_enabled = False
-        self.preferred_audio_codec = AudioType.OPUS
-        self.audio_decoders = None
-        self.audio_encoders = None
-        self.audio_target = 0
-        self.audio_sequence_number = 0
-        self.connection_state = ConnectionState.DISCONNECTED
-        self.max_bandwidth = None
-        self.crypto = None
-        self.encryption_key = None
-        self.client_nonce = None
-        self.server_nonce = None
-        self.last_ping_time = 0
-        self.max_message_length = None
-        self.max_image_message_length = None
-        self.server_allow_html = False
+        self._ssl_socket = None
+        self._udp_socket = None
+        self._audio_enabled = False
+        self._preferred_audio_codec = AudioType.OPUS
+        self._audio_decoders = None
+        self._audio_encoders = None
+        self._audio_target = 0
+        self._audio_sequence_number = 0
+        self._connection_state = ConnectionState.DISCONNECTED
+        self._max_bandwidth = None
+        self._crypto = None
+        self._encryption_key = None
+        self._client_nonce = None
+        self._server_nonce = None
+        self._last_ping_time = 0
+        self._max_message_length = None
+        self._max_image_message_length = None
+        self._server_allow_html = False
 
     def __enter__(self):
         return self
@@ -93,16 +95,16 @@ class Mumpy:
         message = mumble_pb2.Version()
         message.ParseFromString(payload)
         server_version = struct.unpack('>HBB', struct.pack('>I', message.version))
-        self.log.debug('Server version: {}.{}.{}'.format(*server_version))
+        self._log.debug('Server version: {}.{}.{}'.format(*server_version))
         if PROTOCOL_VERSION[0] == server_version[0] and PROTOCOL_VERSION[1] >= server_version[1]:
-            self.log.debug('Sending our version: {}.{}.{}...'.format(*PROTOCOL_VERSION))
+            self._log.debug('Sending our version: {}.{}.{}...'.format(*PROTOCOL_VERSION))
             version_response = mumble_pb2.Version()
             version_response.version = struct.unpack('>I', struct.pack('>HBB', *PROTOCOL_VERSION))[0]
             version_response.release = RELEASE_STRING
             version_response.os = OS_STRING
             version_response.os_version = OS_VERSION_STRING
             self._send_payload(MessageType.VERSION, version_response)
-            self.log.debug('Sending authentication message...')
+            self._log.debug('Sending authentication message...')
             authenticate_response = mumble_pb2.Authenticate()
             authenticate_response.username = self.username
             authenticate_response.password = self.password
@@ -111,7 +113,7 @@ class Mumpy:
             authenticate_response.opus = True
             self._send_payload(MessageType.AUTHENTICATE, authenticate_response)
         else:
-            self.log.error('Version mismatch! Our version is {}.{}.{}. Killing connection...'.format(*PROTOCOL_VERSION))
+            self._log.error('Version mismatch! Our version is {}.{}.{}. Killing connection...'.format(*PROTOCOL_VERSION))
 
     # message type 1 -- UDPTunnel
     def _message_handler_udp_tunnel(self, payload):
@@ -124,7 +126,7 @@ class Mumpy:
     def _message_handler_ping(self, payload):
         message = mumble_pb2.Ping()
         message.ParseFromString(payload)
-        self.log.debug('Pong: {}'.format(message))
+        self._log.debug('Pong: {}'.format(message))
 
     # message type 4
     def _message_handler_reject(self, payload):
@@ -132,18 +134,18 @@ class Mumpy:
         message.ParseFromString(payload)
         rejection_type = message.RejectType.Name(message.type)
         reason = message.reason
-        self.log.error(f'Server rejected connection. Type: {rejection_type}. Reason: {reason}')
-        self.connection_state = ConnectionState.DISCONNECTED
+        self._log.error(f'Server rejected connection. Type: {rejection_type}. Reason: {reason}')
+        self._connection_state = ConnectionState.DISCONNECTED
 
     # message type 5
     def _message_handler_server_sync(self, payload):
         message = mumble_pb2.ServerSync()
         message.ParseFromString(payload)
-        self.session_id = message.session
-        self.max_bandwidth = message.max_bandwidth
-        self.log.info('Connected to server')
-        self.udp_connection_thread = Thread(target=self._start_udp_connection)
-        self.udp_connection_thread.start()
+        self._session_id = message.session
+        self._max_bandwidth = message.max_bandwidth
+        self._log.info('Connected to server')
+        self._udp_connection_thread = Thread(target=self._start_udp_connection)
+        self._udp_connection_thread.start()
         self._fire_event(EventType.CONNECTED, message)
 
     # message type 6
@@ -152,8 +154,8 @@ class Mumpy:
         message.ParseFromString(payload)
         try:
             channel_name = self.get_channel_by_id(message.channel_id).name
-            self.log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
-            del(self.channels[message.channel_id])
+            self._log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
+            del(self._channels[message.channel_id])
             self._fire_event(EventType.CHANNEL_REMOVED, message)
         except KeyError:
             pass
@@ -167,7 +169,7 @@ class Mumpy:
             channel.update(message)
             self._fire_event(EventType.CHANNEL_UPDATED, message)  # TODO: be more specific, what changed?
         except KeyError:
-            self.channels[message.channel_id] = Channel(self, message)
+            self._channels[message.channel_id] = Channel(self, message)
             self._fire_event(EventType.CHANNEL_ADDED, message)
 
     # message type 8
@@ -180,11 +182,11 @@ class Mumpy:
         """
         message = mumble_pb2.UserRemove()
         message.ParseFromString(payload)
-        if message.session == self.session_id:
-            self.connection_state = ConnectionState.DISCONNECTED
+        if message.session == self._session_id:
+            self._connection_state = ConnectionState.DISCONNECTED
         try:
             session_username = self.get_user_by_id(message.session).name
-        except Exception:
+        except KeyError:
             return
         if message.HasField('actor'):
             actor_username = self.get_user_by_id(message.actor).name
@@ -196,10 +198,10 @@ class Mumpy:
                 self._fire_event(EventType.USER_KICKED, message)
             log_message = f"{actor_username} {action} {session_username} (Reason: {message.reason})"
         else:
-            del(self.users[message.session])
+            del(self._users[message.session])
             log_message = f"{session_username} left the server"
             self._fire_event(EventType.USER_DISCONNECTED, message)
-        self.log.debug(log_message)
+        self._log.debug(log_message)
 
     # message type 9
     def _message_handler_user_state(self, payload):
@@ -214,7 +216,7 @@ class Mumpy:
                 if field_changed == 'comment':
                     events_to_fire.append(EventType.USER_COMMENT_UPDATED)
                 elif field_changed == 'texture':
-                    events_to_fire.append(EventType.USER_AVATAR_UPDATED)
+                    events_to_fire.append(EventType.USER_TEXTURE_UPDATED)
                 elif field_changed == 'user_id':
                     if message.user_id == 0xFFFFFFFF:
                         # murmur sends back the maximum value of a uint32 to signify that a user was unregistered
@@ -256,16 +258,16 @@ class Mumpy:
             user.update(message)
             for event_type in events_to_fire:
                 self._fire_event(event_type, message)
-        except Exception:
-            self.users[message.session] = User(self, message)
+        except KeyError:
+            self._users[message.session] = User(self, message)
             self._fire_event(EventType.USER_CONNECTED, message)
 
     # message type 10
     def _message_handler_ban_list(self, payload):
         message = mumble_pb2.BanList()
         message.ParseFromString(payload)
-        self.log.debug("Received message type 10")
-        self.log.debug(message)
+        self._log.debug("Received message type 10")
+        self._log.debug(message)
         self._fire_event(EventType.BANLIST_MODIFIED, message)
 
     # message type 11
@@ -277,42 +279,42 @@ class Mumpy:
         channel_id = message.channel_id
         tree_id = message.tree_id
         message_body = message.message
-        self.log.debug(f'Text message from {sender_id} to {recipient_id} (channel: {channel_id}, tree_id: {tree_id}): {message_body}')
+        self._log.debug(f'Text message from {sender_id} to {recipient_id} (channel: {channel_id}, tree_id: {tree_id}): {message_body}')
         self._fire_event(EventType.MESSAGE_RECEIVED, message)
 
     # message type 12
     def _message_handler_permission_denied(self, payload):
         message = mumble_pb2.PermissionDenied()
         message.ParseFromString(payload)
-        type = message.DenyType.Name(message.type)
+        deny_type = message.DenyType.Name(message.type)
         reason = message.reason
-        self.log.debug(f'Permission denied. Type: {type}. Reason: {reason}')
+        self._log.debug(f'Permission denied. Type: {deny_type}. Reason: {reason}')
 
     # message type 13
     def _message_handler_acl(self, payload):
         message = mumble_pb2.ACL()
         message.ParseFromString(payload)
-        self.log.debug("Received message type 13")
-        self.log.debug(message)
+        self._log.debug("Received message type 13")
+        self._log.debug(message)
 
     # message type 14
     def _message_handler_query_users(self, payload):
         message = mumble_pb2.QueryUsers()
         message.ParseFromString(payload)
-        self.log.debug("Received message type 14")
-        self.log.debug(message)
+        self._log.debug("Received message type 14")
+        self._log.debug(message)
 
     # message type 15
     def _message_handler_crypt_setup(self, payload):
         message = mumble_pb2.CryptSetup()
         message.ParseFromString(payload)
         if message.HasField('key'):
-            self.encryption_key = message.key
+            self._encryption_key = message.key
         if message.HasField('client_nonce'):
-            self.client_nonce = message.client_nonce
+            self._client_nonce = message.client_nonce
         if message.HasField('server_nonce'):
-            self.server_nonce = message.server_nonce
-        self.crypto = MumbleCrypto(self.encryption_key, self.client_nonce, self.server_nonce)
+            self._server_nonce = message.server_nonce
+        self._crypto = MumbleCrypto(self._encryption_key, self._client_nonce, self._server_nonce)
 
     # message type 16 -- ContextActionModify
     # not sent by server, no handler needed
@@ -337,7 +339,7 @@ class Mumpy:
         message = mumble_pb2.PermissionQuery()
         message.ParseFromString(payload)
         if message.flush:
-            for channel in self.channels.values():
+            for channel in self._channels.values():
                 channel.permissions = None
         self.get_channel_by_id(message.channel_id).permissions = message.permissions
         self._fire_event(EventType.CHANNEL_PERMISSIONS_UPDATED, message)
@@ -347,8 +349,8 @@ class Mumpy:
         message = mumble_pb2.CodecVersion()
         message.ParseFromString(payload)
         if not message.opus:
-            self.audio_enabled = False
-            self.log.warning("Server does not support Opus, disabling audio")
+            self._audio_enabled = False
+            self._log.warning("Server does not support Opus, disabling audio")
             self._fire_event(EventType.AUDIO_DISABLED, message)
 
     # message type 22
@@ -376,9 +378,9 @@ class Mumpy:
     def _message_handler_server_config(self, payload):
         message = mumble_pb2.ServerConfig()
         message.ParseFromString(payload)
-        self.max_message_length = message.message_length
-        self.max_image_message_length = message.image_message_length
-        self.server_allow_html = message.allow_html
+        self._max_message_length = message.message_length
+        self._max_image_message_length = message.image_message_length
+        self._server_allow_html = message.allow_html
 
     # message type 25
     def _message_handler_suggest_config(self, payload):
@@ -410,7 +412,7 @@ class Mumpy:
         if audio_type == AudioType.PING:
             ping_sent_time = varint_reader.read_next()
             self.last_udp_ping_received = time()
-            self.log.debug(f"UDP ping from {ping_sent_time}, response received at {self.last_udp_ping_received}")
+            self._log.debug(f"UDP ping from {ping_sent_time}, response received at {self.last_udp_ping_received}")
             return
         elif audio_type == AudioType.OPUS:
             session_id = varint_reader.read_next()  # the user that sent the voice transmission
@@ -423,7 +425,7 @@ class Mumpy:
             size = size & 0x1fff
             voice_frame = varint_reader.get_current_data()[:size]  # anything left after size is position data
             # TODO: Handle position data
-            pcm = self.audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
+            pcm = self._audio_decoders[audio_type].decode(voice_frame, frame_size=5760)  # 48000 / 100 * 12
             user = self.get_user_by_id(session_id)
             user.audio_buffer += pcm
             user.audio_buffer_dict[sequence_number] = pcm
@@ -443,8 +445,8 @@ class Mumpy:
         Returns:
             bytes: the encrypted data
         """
-        tag, ciphertext = self.crypto.encrypt(data)
-        ciphertext = self.crypto.client_nonce[0:1] + tag[0:3] + ciphertext
+        tag, ciphertext = self._crypto.encrypt(data)
+        ciphertext = self._crypto.client_nonce[0:1] + tag[0:3] + ciphertext
         return bytes(ciphertext)
 
     def _decrypt(self, data):
@@ -460,7 +462,7 @@ class Mumpy:
         nonce_byte = data[0:1]
         tag = data[1:4]
         data = data[4:]
-        decryption_tag, plaintext = self.crypto.decrypt(data, nonce_byte)
+        decryption_tag, plaintext = self._crypto.decrypt(data, nonce_byte)
         assert tag == decryption_tag[0:3], f"Decryption tag does not match, decryption failed"
         return plaintext
 
@@ -475,98 +477,96 @@ class Mumpy:
         Returns:
             None
         """
-        self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.ping(udp=True)
-        self.udp_socket.settimeout(6)
+        self._udp_socket.settimeout(6)
         try:
-            response, sender = self.udp_socket.recvfrom(2048)
+            response, sender = self._udp_socket.recvfrom(2048)
         except socket.timeout:
-            self.udp_socket.close()
-            self.log.warning("Timed out waiting for UDP ping response from server. Using TCP for audio traffic.")
+            self._udp_socket.close()
+            self._log.warning("Timed out waiting for UDP ping response from server. Using TCP for audio traffic.")
             return
         self._decrypt(response)  # will raise exception is something goes wrong
-        self.udp_socket.settimeout(None)
-        self.connection_state = ConnectionState.CONNECTED_UDP
-        self.log.debug("Using UDP for audio traffic")
+        self._udp_socket.settimeout(None)
+        self._connection_state = ConnectionState.CONNECTED_UDP
+        self._log.debug("Using UDP for audio traffic")
         self._fire_event(EventType.UDP_CONNECTED)
-        while self.connection_state == ConnectionState.CONNECTED_UDP:
-            inputs, outputs, exceptions = select.select([self.udp_socket], [], [])
+        while self._connection_state == ConnectionState.CONNECTED_UDP:
+            inputs, outputs, exceptions = select.select([self._udp_socket], [], [])
             for input_socket in inputs:
                 try:
                     udp_message_buffer, sender = input_socket.recvfrom(2048)
                 except OSError:
-                    self.log.debug("UDP socket died, switching to TCP")
-                    self.connection_state = ConnectionState.CONNECTED_NO_UDP
+                    self._log.debug("UDP socket died, switching to TCP")
+                    self._connection_state = ConnectionState.CONNECTED_NO_UDP
                     continue
                 if len(udp_message_buffer) == 0:  # connection closed by server
-                    self.log.debug("UDP socket returned 0 bytes, closing connection and switching to TCP")
-                    self.connection_state = ConnectionState.CONNECTED_NO_UDP
+                    self._log.debug("UDP socket returned 0 bytes, closing connection and switching to TCP")
+                    self._connection_state = ConnectionState.CONNECTED_NO_UDP
                     continue
                 try:
                     decrypted_udp_message = self._decrypt(udp_message_buffer)
                     self._handle_audio(decrypted_udp_message)
                 except Exception:
-                    self.log.error(f"Failed to handle UDP message. Exception: {traceback.format_exc()}")
+                    self._log.error(f"Failed to handle UDP message. Exception: {traceback.format_exc()}")
         else:
             self._fire_event(EventType.UDP_DISCONNECTED)
 
     def _send_packet_udp(self, data):
-        self.udp_socket.sendto(self._encrypt(data), (self.address, self.port))
+        self._udp_socket.sendto(self._encrypt(data), (self._address, self._port))
 
     def _start_tcp_connection(self):
-        self.tcp_message_buffer = b""
-        while self.connection_state != ConnectionState.DISCONNECTED:
-            inputs, outputs, exceptions = select.select([self.ssl_socket], [], [])
+        self._tcp_message_buffer = b""
+        while self._connection_state != ConnectionState.DISCONNECTED:
+            inputs, outputs, exceptions = select.select([self._ssl_socket], [], [])
             for input_socket in inputs:
                 try:
-                    self.tcp_message_buffer += input_socket.recv(4096)
+                    self._tcp_message_buffer += input_socket.recv(4096)
                 except OSError:
-                    self.log.debug("TCP socket died")
-                    self.connection_state = ConnectionState.DISCONNECTED
+                    self._log.debug("TCP socket died")
+                    self._connection_state = ConnectionState.DISCONNECTED
                     continue
-                if len(self.tcp_message_buffer) == 0:  # connection closed by server
-                    self.log.debug("TCP socket returned 0 bytes, closing connection")
-                    self.connection_state = ConnectionState.DISCONNECTED
+                if len(self._tcp_message_buffer) == 0:  # connection closed by server
+                    self._log.debug("TCP socket returned 0 bytes, closing connection")
+                    self._connection_state = ConnectionState.DISCONNECTED
                     continue
 
-                while len(self.tcp_message_buffer) >= 6:  # message header present
-                    message_type = int.from_bytes(self.tcp_message_buffer[0:2], byteorder='big')
-                    message_length = int.from_bytes(self.tcp_message_buffer[2:6], byteorder='big')
-                    if len(self.tcp_message_buffer) >= 6 + message_length:
-                        message_payload = self.tcp_message_buffer[6:6 + message_length]
+                while len(self._tcp_message_buffer) >= 6:  # message header present
+                    message_type = int.from_bytes(self._tcp_message_buffer[0:2], byteorder='big')
+                    message_length = int.from_bytes(self._tcp_message_buffer[2:6], byteorder='big')
+                    if len(self._tcp_message_buffer) >= 6 + message_length:
+                        message_payload = self._tcp_message_buffer[6:6 + message_length]
                     else:  # need to read more, buffer only contains partial packet
-                        self.tcp_message_buffer += input_socket.recv(4096)
+                        self._tcp_message_buffer += input_socket.recv(4096)
                         continue
-                    self.tcp_message_buffer = self.tcp_message_buffer[6 + message_length:]
+                    self._tcp_message_buffer = self._tcp_message_buffer[6 + message_length:]
 
                     try:
-                        self.message_handlers[message_type](message_payload)
-                    except KeyError:
-                        self.log.warning(f'Received unhandled message type = {message_type}, '
-                                         f'message = {message_payload}')
+                        self._message_handlers[message_type](message_payload)
                     except Exception as e:
-                        self.log.warning(f'Caught exception ({e}) while handling message type {message_type}, '
-                                         f'message = {message_payload}')
+                        self._log.warning(f'Caught exception ({e}) while handling message type {message_type}, \n'
+                                          f'message = {message_payload} \n',
+                                          f'exception = {traceback.format_exc()}')
         else:
             self._fire_event(EventType.DISCONNECTED)
 
     def _fire_event(self, event_type, message=None):
-        self.log.debug(f"Firing event type {event_type}")
-        self.event_handlers[event_type](self, message)
+        self._log.debug(f"Firing event type {event_type}")
+        self._event_handlers[event_type](self, message)
 
     def _ping_thread(self):
-        self.last_ping_time = 0
+        self._last_ping_time = 0
         while self.is_alive():
             sleep(1)
-            if (int(time()) - self.last_ping_time) >= PING_INTERVAL:
+            if (int(time()) - self._last_ping_time) >= PING_INTERVAL:
                 self.ping()
-                if self.connection_state == ConnectionState.CONNECTED_UDP:
+                if self._connection_state == ConnectionState.CONNECTED_UDP:
                     self.ping(udp=True)
 
     def _send_payload(self, message_type, payload):
         packet = struct.pack('!HL', message_type, payload.ByteSize()) + payload.SerializeToString()
         try:
-            self.ssl_socket.send(packet)
+            self._ssl_socket.send(packet)
         except OSError:
             return False
 
@@ -593,7 +593,7 @@ class Mumpy:
         Returns:
             None
         """
-        self.event_handlers[event_type].append(function_handle)
+        self._event_handlers[event_type].append(function_handle)
 
     def connect(self, address, port=64738, certfile=None, keyfile=None, keypassword=None):
         """
@@ -610,36 +610,36 @@ class Mumpy:
         Returns:
             None
         """
-        self.address = address
-        self.port = port
-        self.certfile = certfile
-        self.keyfile = keyfile
-        self.keypassword = keypassword
-        self.log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
+        self._address = address
+        self._port = port
+        self._certfile = certfile
+        self._keyfile = keyfile
+        self._keypassword = keypassword
+        self._log = logging.getLogger(f'{self.username}@{self.address}:{self.port}')
         try:
             import opuslib
-            self.audio_decoders = {AudioType.OPUS: opuslib.Decoder(48000, 1)}
-            self.audio_encoders = {AudioType.OPUS: opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
-            self.audio_enabled = True
+            self._audio_decoders = {AudioType.OPUS: opuslib.Decoder(48000, 1)}
+            self._audio_encoders = {AudioType.OPUS: opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
+            self._audio_enabled = True
             self._fire_event(EventType.AUDIO_ENABLED)
         except Exception:
-            self.log.warning('Failed to initialize Opus audio codec. Disabling audio')
+            self._log.warning('Failed to initialize Opus audio codec. Disabling audio')
             self._fire_event(EventType.AUDIO_DISABLED)
-        self.connection_state = ConnectionState.CONNECTING
-        self.log.debug(f"Connecting to {self.address}:{self.port}")
+        self._connection_state = ConnectionState.CONNECTING
+        self._log.debug(f"Connecting to {self.address}:{self.port}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.address, self.port))
+        sock.connect((self._address, self._port))
         ssl_context = SSLContext(PROTOCOL_TLS)
-        if self.certfile is not None:
-            ssl_context.load_cert_chain(self.certfile, keyfile=self.keyfile, password=self.keypassword)
-        self.ssl_socket = ssl_context.wrap_socket(sock)
-        self.ping_thread = Thread(target=self._ping_thread)
-        self.ping_thread.start()
-        self.tcp_connection_thread = Thread(target=self._start_tcp_connection)
-        self.tcp_connection_thread.start()
+        if self._certfile is not None:
+            ssl_context.load_cert_chain(self._certfile, keyfile=self._keyfile, password=self._keypassword)
+        self._ssl_socket = ssl_context.wrap_socket(sock)
+        self._ping_thread = Thread(target=self._ping_thread)
+        self._ping_thread.start()
+        self._tcp_connection_thread = Thread(target=self._start_tcp_connection)
+        self._tcp_connection_thread.start()
         # do not return from this method until the connection is fully established and usable, or it fails
-        while self.connection_state not in (ConnectionState.CONNECTED_UDP, ConnectionState.CONNECTED_NO_UDP,
-                                            ConnectionState.DISCONNECTED):
+        while self._connection_state not in (ConnectionState.CONNECTED_UDP, ConnectionState.CONNECTED_NO_UDP,
+                                             ConnectionState.DISCONNECTED):
             sleep(0.1)
 
     def disconnect(self):
@@ -649,39 +649,43 @@ class Mumpy:
         Returns:
             None
         """
-        if self.connection_state != ConnectionState.DISCONNECTED:
+        if self._connection_state != ConnectionState.DISCONNECTED:
             try:
-                self.ssl_socket.shutdown(socket.SHUT_RDWR)
+                self._ssl_socket.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
             finally:
-                self.ssl_socket.close()
-            if self.udp_socket is not None:
+                self._ssl_socket.close()
+            if self._udp_socket is not None:
                 try:
-                    self.udp_socket.shutdown(socket.SHUT_RDWR)
+                    self._udp_socket.shutdown(socket.SHUT_RDWR)
                 except OSError:
                     pass
                 finally:
-                    self.udp_socket.close()
-        self.connection_state = ConnectionState.DISCONNECTED
+                    self._udp_socket.close()
+        self._connection_state = ConnectionState.DISCONNECTED
 
     @property
     def user(self):
-        return self.get_user_by_id(self.session_id)
+        """
+        Returns:
+            User: the bot's User
+        """
+        return self.get_user_by_id(self._session_id)
 
     def get_users(self):
         """
         Returns:
             dict: a dictionary of :class:`~mumpy.user.User`objects and IDs in the form ``<Mumpy>.get_users()[id] = User()``
         """
-        return self.users
+        return self._users
 
     def get_channels(self):
         """
         Returns:
             dict: a dictionary of :class:`~mumpy.channel.Channel` objects and IDs in the form ``<Mumpy>.get_channels()[id] = Channel()``
         """
-        return self.channels
+        return self._channels
 
     @property
     def channel_id(self):
@@ -707,7 +711,7 @@ class Mumpy:
         Returns:
             Channel: the Channel identified by channel_id
         """
-        return self.channels[channel_id]
+        return self._channels[channel_id]
 
     def get_channel_by_name(self, name):
         """
@@ -717,7 +721,7 @@ class Mumpy:
         Returns:
             Channel: the Channel identified by name
         """
-        for channel_id, channel in self.channels.items():
+        for channel_id, channel in self._channels.items():
             if channel.name == name:
                 return channel
         raise IndexError(f"Channel with the specified name does not exist: {name}")
@@ -730,7 +734,7 @@ class Mumpy:
         Returns:
             User: the User identified by session_id
         """
-        return self.users[session_id]
+        return self._users[session_id]
 
     def get_user_by_name(self, name):
         """
@@ -740,7 +744,7 @@ class Mumpy:
         Returns:
             User: the User identified by name
         """
-        for session_id, user in self.users.items():
+        for session_id, user in self._users.items():
             if user.name == name:
                 return user
         raise IndexError(f"User with the specified name does not exist: {name}")
@@ -782,7 +786,7 @@ class Mumpy:
         """
         Clears every user's audio log, removing all received audio transmissions from memory.
         """
-        for session_id, user in self.users.items():
+        for session_id, user in self._users.items():
             user.audio_log = []
 
     @staticmethod
@@ -827,7 +831,7 @@ class Mumpy:
                 counter += 1
             user.audio_log = []
 
-    def _send_audio_packet_tcp(self, udppacket):
+    def _send_audio_packet_tcp(self, udp_packet):
         """
         Sends a UDP audio packet to the server through the TCP socket.
 
@@ -837,8 +841,8 @@ class Mumpy:
         Returns:
             None
         """
-        packet = struct.pack('!HL', MessageType.UDPTUNNEL, len(udppacket)) + udppacket
-        self.ssl_socket.send(packet)
+        packet = struct.pack('!HL', MessageType.UDPTUNNEL, len(udp_packet)) + udp_packet
+        self._ssl_socket.send(packet)
 
     def send_audio(self, pcm, sample_rate=48000, sample_width=2):
         """
@@ -858,25 +862,25 @@ class Mumpy:
         while len(pcm) > 0:
             to_encode = pcm[:frame_size * frame_width]
             pcm = pcm[frame_size * frame_width:]
-            encoded_audio.append(self.audio_encoders[self.preferred_audio_codec].encode(to_encode, frame_size))
-        header = struct.pack('!B', self.preferred_audio_codec << 5 | self.audio_target)
+            encoded_audio.append(self._audio_encoders[self._preferred_audio_codec].encode(to_encode, frame_size))
+        header = struct.pack('!B', self._preferred_audio_codec << 5 | self._audio_target)
         for frame in encoded_audio[:-1]:
-            sequence_number = VarInt(self.audio_sequence_number).encode()
+            sequence_number = VarInt(self._audio_sequence_number).encode()
             # TODO: positional info. struct.pack('!fff', 1.0, 2.0, 3.0)
             payload = VarInt(len(frame)).encode() + frame
             udp_packet = header + sequence_number + payload
             self._send_audio_packet_tcp(udp_packet)
-            self.audio_sequence_number += 1
+            self._audio_sequence_number += 1
         # set the terminator bit for the last payload
         frame = encoded_audio[-1]
-        sequence_number = VarInt(self.audio_sequence_number).encode()
+        sequence_number = VarInt(self._audio_sequence_number).encode()
         payload = VarInt(len(frame) | 0x2000).encode() + frame
         udp_packet = header + sequence_number + payload
-        if self.connection_state == ConnectionState.CONNECTED_UDP:
+        if self._connection_state == ConnectionState.CONNECTED_UDP:
             self._send_packet_udp(udp_packet)
         else:
             self._send_audio_packet_tcp(udp_packet)
-        self.audio_sequence_number += 1
+        self._audio_sequence_number += 1
         self._fire_event(EventType.AUDIO_TRANSMISSION_SENT)
 
     def play_wav(self, filename):
@@ -938,26 +942,27 @@ class Mumpy:
             ping_payload = mumble_pb2.Ping()
             ping_payload.timestamp = int(time())
             self._send_payload(MessageType.PING, ping_payload)
-            self.last_ping_time = ping_payload.timestamp
+            self._last_ping_time = ping_payload.timestamp
 
     def is_alive(self):
         """
         Returns:
             bool: True if bot is connected to the server
         """
-        return self.connection_state != ConnectionState.DISCONNECTED
+        return self._connection_state != ConnectionState.DISCONNECTED
 
     def is_udp_alive(self):
         """
         Returns:
             bool: True if the bot has an active UDP connection to the server
         """
-        return self.connection_state == ConnectionState.CONNECTED_UDP
+        return self._connection_state == ConnectionState.CONNECTED_UDP
 
     def update_user_stats(self, user):
         """
         Queries the server for a User's stats.
         This function does not return anything. The server's response may fire the following events:
+
         - USER_STATS_UPDATED
 
         Args:
@@ -980,9 +985,9 @@ class Mumpy:
             channel_descriptions(iterable): a list of Channels to retrieve descriptions for (Default value = ())
 
         Events:
-            - USER_COMMENT_UPDATED
-            - USER_TEXTURE_UPDATED
-            - CHANNEL_UPDATED
+            - :obj:`.USER_COMMENT_UPDATED`
+            - :obj:`.USER_TEXTURE_UPDATED`
+            - :obj:`.CHANNEL_UPDATED`
         """
         message_payload = mumble_pb2.RequestBlob()
         message_payload.session_texture.extend(user_textures)
@@ -1138,7 +1143,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self.session_id
+        message_payload.session = self._session_id
         message_payload.self_mute = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
@@ -1150,7 +1155,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self.session_id
+        message_payload.session = self._session_id
         message_payload.self_deaf = True
         self._send_payload(MessageType.USERSTATE, message_payload)
 
@@ -1162,7 +1167,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self.session_id
+        message_payload.session = self._session_id
         message_payload.self_mute = False
         message_payload.mute = False
         self._send_payload(MessageType.USERSTATE, message_payload)
@@ -1175,7 +1180,7 @@ class Mumpy:
             None
         """
         message_payload = mumble_pb2.UserState()
-        message_payload.session = self.session_id
+        message_payload.session = self._session_id
         message_payload.self_deaf = False
         message_payload.deaf = False
         self._send_payload(MessageType.USERSTATE, message_payload)
