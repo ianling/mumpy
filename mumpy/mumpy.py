@@ -11,6 +11,7 @@ from ssl import SSLContext, PROTOCOL_TLS
 from threading import Thread
 from time import time, sleep
 import logging
+import queue
 import select
 import socket
 import struct
@@ -61,6 +62,7 @@ class Mumpy:
         self.udp_connection_thread = None
         self.ping_thread = None
         self.event_handler_thread = None
+        self._event_queue = queue.Queue()
         self.ssl_socket = None
         self.udp_socket = None
         self.audio_enabled = False
@@ -347,7 +349,7 @@ class Mumpy:
         if not message.opus:
             self.audio_enabled = False
             self.log.warning("Server does not support Opus, disabling audio")
-            self._fire_event(MumpyEvent.AUDIO_DISABLED)
+            self._fire_event(MumpyEvent.AUDIO_DISABLED, message)
 
     # message type 22
     def _message_handler_UserStats(self, payload):
@@ -383,8 +385,9 @@ class Mumpy:
         # nothing important in this message type, maybe implement in the future
         pass
 
-    def _start_event_handler_thread(self):
-        pass
+    def _event_worker(self):
+        while True:
+            event = self._event_queue.get()
 
     def _handle_audio(self, payload):
         """
