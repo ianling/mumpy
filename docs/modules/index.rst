@@ -7,7 +7,7 @@ API Reference
    :maxdepth: 2
 
    Channel
-   MumpyEvent
+   EventType
    Mumpy
    User
 

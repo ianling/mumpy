@@ -35,7 +35,7 @@ This example is a bot that echoes all text chat messages back to the original se
 
 .. code:: python
 
-    from mumpy import Mumpy, MumpyEvent
+    from mumpy import Mumpy, EventType
     from time import sleep
 
     def text_message_handler(mumpy_instance, raw_message):
@@ -44,7 +44,7 @@ This example is a bot that echoes all text chat messages back to the original se
         mumpy_instance.text_message(message_body, users=(sender,))
 
     my_bot = Mumpy(username="MyBot")
-    my_bot.add_event_handler(MumpyEvent.MESSAGE_RECEIVED, text_message_handler)  # add our function as a handler for MESSAGE_RECEIVED events
+    my_bot.add_event_handler(EventType.MESSAGE_RECEIVED, text_message_handler)  # add our function as a handler for MESSAGE_RECEIVED events
     my_bot.connect('localhost')
 
     while my_bot.is_alive():
@@ -57,7 +57,7 @@ This example is a bot that connects to a server, waits for the UDP socket to bec
 
 .. code:: python
 
-    from mumpy import Mumpy, MumpyEvent
+    from mumpy import Mumpy, EventType
     from time import sleep
 
     def udp_connected_handler(mumpy_instance, raw_message):

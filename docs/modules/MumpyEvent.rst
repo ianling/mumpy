@@ -1,7 +1,7 @@
-MumpyEvent Enum
+EventType Enum
 ===============
 
 .. module:: mumpy.constants
 
-.. autoclass:: MumpyEvent
+.. autoclass:: EventType
     :members:

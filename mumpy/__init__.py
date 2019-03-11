@@ -1,4 +1,4 @@
 from .mumpy import Mumpy
-from .constants import MumpyEvent
+from .constants import EventType
 
-__all__ = ['Mumpy', 'MumpyEvent']
+__all__ = ['Mumpy', 'EventType']

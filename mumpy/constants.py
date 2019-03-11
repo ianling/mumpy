@@ -101,7 +101,7 @@ class ConnectionState(metaclass=MumpyEnum):
     DISCONNECTING = 'disconnecting'
 
 
-class MumpyEvent(metaclass=MumpyEnum):
+class EventType(metaclass=MumpyEnum):
     """
     The event types supported by Mumpy.
     """

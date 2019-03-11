@@ -1,6 +1,6 @@
 from .channel import Channel
 from . import mumble_pb2
-from .constants import ConnectionState, MessageType, MumpyEvent, AudioType, PROTOCOL_VERSION, \
+from .constants import ConnectionState, MessageType, EventType, AudioType, PROTOCOL_VERSION, \
     OS_VERSION_STRING, RELEASE_STRING, OS_STRING, PING_INTERVAL
 from .event_handler import EventHandler
 from .mumblecrypto import MumbleCrypto
@@ -27,30 +27,30 @@ class Mumpy:
         self.channels = {}
         self.users = {}
         self.session_id = None
-        self.message_handlers = {MessageType.VERSION: self._message_handler_Version,
-                                 MessageType.UDPTUNNEL: self._message_handler_UDPTunnel,
-                                 MessageType.PING: self._message_handler_Ping,
-                                 MessageType.REJECT: self._message_handler_Reject,
-                                 MessageType.SERVERSYNC: self._message_handler_ServerSync,
-                                 MessageType.CHANNELREMOVE: self._message_handler_ChannelRemove,
-                                 MessageType.CHANNELSTATE: self._message_handler_ChannelState,
-                                 MessageType.USERREMOVE: self._message_handler_UserRemove,
-                                 MessageType.USERSTATE: self._message_handler_UserState,
-                                 MessageType.BANLIST: self._message_handler_BanList,
-                                 MessageType.TEXTMESSAGE: self._message_handler_TextMessage,
-                                 MessageType.PERMISSIONDENIED: self._message_handler_PermissionDenied,
-                                 MessageType.ACL: self._message_handler_ACL,
-                                 MessageType.QUERYUSERS: self._message_handler_QueryUsers,
-                                 MessageType.CRYPTSETUP: self._message_handler_CryptSetup,
-                                 MessageType.USERLIST: self._message_handler_UserList,
-                                 MessageType.PERMISSIONQUERY: self._message_handler_PermissionQuery,
-                                 MessageType.CODECVERSION: self._message_handler_CodecVersion,
-                                 MessageType.USERSTATS: self._message_handler_UserStats,
-                                 MessageType.SERVERCONFIG: self._message_handler_ServerConfig,
-                                 MessageType.SUGGESTCONFIG: self._message_handler_SuggestConfig,
+        self.message_handlers = {MessageType.VERSION: self._message_handler_version,
+                                 MessageType.UDPTUNNEL: self._message_handler_udp_tunnel,
+                                 MessageType.PING: self._message_handler_ping,
+                                 MessageType.REJECT: self._message_handler_reject,
+                                 MessageType.SERVERSYNC: self._message_handler_server_sync,
+                                 MessageType.CHANNELREMOVE: self._message_handler_channel_remove,
+                                 MessageType.CHANNELSTATE: self._message_handler_channel_state,
+                                 MessageType.USERREMOVE: self._message_handler_user_remove,
+                                 MessageType.USERSTATE: self._message_handler_user_state,
+                                 MessageType.BANLIST: self._message_handler_ban_list,
+                                 MessageType.TEXTMESSAGE: self._message_handler_text_message,
+                                 MessageType.PERMISSIONDENIED: self._message_handler_permission_denied,
+                                 MessageType.ACL: self._message_handler_acl,
+                                 MessageType.QUERYUSERS: self._message_handler_query_users,
+                                 MessageType.CRYPTSETUP: self._message_handler_crypt_setup,
+                                 MessageType.USERLIST: self._message_handler_user_list,
+                                 MessageType.PERMISSIONQUERY: self._message_handler_permission_query,
+                                 MessageType.CODECVERSION: self._message_handler_codec_version,
+                                 MessageType.USERSTATS: self._message_handler_user_stats,
+                                 MessageType.SERVERCONFIG: self._message_handler_server_config,
+                                 MessageType.SUGGESTCONFIG: self._message_handler_suggest_config,
                                  }
         self.event_handlers = {}
-        for event in MumpyEvent:
+        for event in EventType:
             self.event_handlers[event] = EventHandler()
         self.address = None
         self.port = None
@@ -89,7 +89,7 @@ class Mumpy:
         self.disconnect()
 
     # message type 0
-    def _message_handler_Version(self, payload):
+    def _message_handler_version(self, payload):
         message = mumble_pb2.Version()
         message.ParseFromString(payload)
         server_version = struct.unpack('>HBB', struct.pack('>I', message.version))
@@ -114,20 +114,20 @@ class Mumpy:
             self.log.error('Version mismatch! Our version is {}.{}.{}. Killing connection...'.format(*PROTOCOL_VERSION))
 
     # message type 1 -- UDPTunnel
-    def _message_handler_UDPTunnel(self, payload):
+    def _message_handler_udp_tunnel(self, payload):
         self._handle_audio(payload)
 
     # message type 2 -- Authenticate
     # not sent by server, no handler needed
 
     # message type 3
-    def _message_handler_Ping(self, payload):
+    def _message_handler_ping(self, payload):
         message = mumble_pb2.Ping()
         message.ParseFromString(payload)
         self.log.debug('Pong: {}'.format(message))
 
     # message type 4
-    def _message_handler_Reject(self, payload):
+    def _message_handler_reject(self, payload):
         message = mumble_pb2.Reject()
         message.ParseFromString(payload)
         rejection_type = message.RejectType.Name(message.type)
@@ -136,7 +136,7 @@ class Mumpy:
         self.connection_state = ConnectionState.DISCONNECTED
 
     # message type 5
-    def _message_handler_ServerSync(self, payload):
+    def _message_handler_server_sync(self, payload):
         message = mumble_pb2.ServerSync()
         message.ParseFromString(payload)
         self.session_id = message.session
@@ -144,34 +144,34 @@ class Mumpy:
         self.log.info('Connected to server')
         self.udp_connection_thread = Thread(target=self._start_udp_connection)
         self.udp_connection_thread.start()
-        self._fire_event(MumpyEvent.CONNECTED, message)
+        self._fire_event(EventType.CONNECTED, message)
 
     # message type 6
-    def _message_handler_ChannelRemove(self, payload):
+    def _message_handler_channel_remove(self, payload):
         message = mumble_pb2.ChannelRemove()
         message.ParseFromString(payload)
         try:
             channel_name = self.get_channel_by_id(message.channel_id).name
             self.log.debug(f'Removing channel ID {message.channel_id} ({channel_name})')
             del(self.channels[message.channel_id])
-            self._fire_event(MumpyEvent.CHANNEL_REMOVED, message)
-        except Exception:
+            self._fire_event(EventType.CHANNEL_REMOVED, message)
+        except KeyError:
             pass
 
     # message type 7
-    def _message_handler_ChannelState(self, payload):
+    def _message_handler_channel_state(self, payload):
         message = mumble_pb2.ChannelState()
         message.ParseFromString(payload)
         try:
             channel = self.get_channel_by_id(message.channel_id)
             channel.update(message)
-            self._fire_event(MumpyEvent.CHANNEL_UPDATED, message)  # TODO: be more specific, what changed?
-        except Exception:
+            self._fire_event(EventType.CHANNEL_UPDATED, message)  # TODO: be more specific, what changed?
+        except KeyError:
             self.channels[message.channel_id] = Channel(self, message)
-            self._fire_event(MumpyEvent.CHANNEL_ADDED, message)
+            self._fire_event(EventType.CHANNEL_ADDED, message)
 
     # message type 8
-    def _message_handler_UserRemove(self, payload):
+    def _message_handler_user_remove(self, payload):
         """
         Murmur sends two UserRemove messages when someone is kicked or banned.
         The first one contains the session, actor, reason, and ban fields.
@@ -190,19 +190,19 @@ class Mumpy:
             actor_username = self.get_user_by_id(message.actor).name
             if message.ban:
                 action = "banned"
-                self._fire_event(MumpyEvent.USER_BANNED, message)
+                self._fire_event(EventType.USER_BANNED, message)
             else:
                 action = "kicked"
-                self._fire_event(MumpyEvent.USER_KICKED, message)
+                self._fire_event(EventType.USER_KICKED, message)
             log_message = f"{actor_username} {action} {session_username} (Reason: {message.reason})"
         else:
             del(self.users[message.session])
             log_message = f"{session_username} left the server"
-            self._fire_event(MumpyEvent.USER_DISCONNECTED, message)
+            self._fire_event(EventType.USER_DISCONNECTED, message)
         self.log.debug(log_message)
 
     # message type 9
-    def _message_handler_UserState(self, payload):
+    def _message_handler_user_state(self, payload):
         message = mumble_pb2.UserState()
         message.ParseFromString(payload)
         try:
@@ -212,15 +212,15 @@ class Mumpy:
             fields_changed = [field.name for field, value in message_fields]
             for field_changed in fields_changed:
                 if field_changed == 'comment':
-                    events_to_fire.append(MumpyEvent.USER_COMMENT_UPDATED)
+                    events_to_fire.append(EventType.USER_COMMENT_UPDATED)
                 elif field_changed == 'texture':
-                    events_to_fire.append(MumpyEvent.USER_AVATAR_UPDATED)
+                    events_to_fire.append(EventType.USER_AVATAR_UPDATED)
                 elif field_changed == 'user_id':
                     if message.user_id == 0xFFFFFFFF:
                         # murmur sends back the maximum value of a uint32 to signify that a user was unregistered
-                        events_to_fire.append(MumpyEvent.USER_UNREGISTERED)
+                        events_to_fire.append(EventType.USER_UNREGISTERED)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_REGISTERED)
+                        events_to_fire.append(EventType.USER_REGISTERED)
                 elif field_changed == 'self_mute':
                     if user.self_mute == message.self_mute:
                         # they didn't change this field.
@@ -228,48 +228,48 @@ class Mumpy:
                         # Murmur does not send both fields if an admin mutes or deafens a user on the server.
                         continue
                     elif message.self_mute:
-                        events_to_fire.append(MumpyEvent.USER_SELF_MUTED)
+                        events_to_fire.append(EventType.USER_SELF_MUTED)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_SELF_UNMUTED)
+                        events_to_fire.append(EventType.USER_SELF_UNMUTED)
                 elif field_changed == 'self_deaf':
                     if user.self_deaf == message.self_deaf:
                         continue
                     elif message.self_deaf:
-                        events_to_fire.append(MumpyEvent.USER_SELF_DEAFENED)
+                        events_to_fire.append(EventType.USER_SELF_DEAFENED)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_SELF_UNDEAFENED)
+                        events_to_fire.append(EventType.USER_SELF_UNDEAFENED)
                 elif field_changed == 'mute':
                     if message.mute:
-                        events_to_fire.append(MumpyEvent.USER_MUTED)
+                        events_to_fire.append(EventType.USER_MUTED)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_UNMUTED)
+                        events_to_fire.append(EventType.USER_UNMUTED)
                 elif field_changed == 'deaf':
                     if message.deaf:
-                        events_to_fire.append(MumpyEvent.USER_DEAFENED)
+                        events_to_fire.append(EventType.USER_DEAFENED)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_UNDEAFENED)
+                        events_to_fire.append(EventType.USER_UNDEAFENED)
                 elif field_changed == 'recording':
                     if message.recording:
-                        events_to_fire.append(MumpyEvent.USER_RECORDING)
+                        events_to_fire.append(EventType.USER_RECORDING)
                     else:
-                        events_to_fire.append(MumpyEvent.USER_STOPPED_RECORDING)
+                        events_to_fire.append(EventType.USER_STOPPED_RECORDING)
             user.update(message)
             for event_type in events_to_fire:
                 self._fire_event(event_type, message)
         except Exception:
             self.users[message.session] = User(self, message)
-            self._fire_event(MumpyEvent.USER_CONNECTED, message)
+            self._fire_event(EventType.USER_CONNECTED, message)
 
     # message type 10
-    def _message_handler_BanList(self, payload):
+    def _message_handler_ban_list(self, payload):
         message = mumble_pb2.BanList()
         message.ParseFromString(payload)
         self.log.debug("Received message type 10")
         self.log.debug(message)
-        self._fire_event(MumpyEvent.BANLIST_MODIFIED, message)
+        self._fire_event(EventType.BANLIST_MODIFIED, message)
 
     # message type 11
-    def _message_handler_TextMessage(self, payload):
+    def _message_handler_text_message(self, payload):
         message = mumble_pb2.TextMessage()
         message.ParseFromString(payload)
         sender_id = message.actor
@@ -278,10 +278,10 @@ class Mumpy:
         tree_id = message.tree_id
         message_body = message.message
         self.log.debug(f'Text message from {sender_id} to {recipient_id} (channel: {channel_id}, tree_id: {tree_id}): {message_body}')
-        self._fire_event(MumpyEvent.MESSAGE_RECEIVED, message)
+        self._fire_event(EventType.MESSAGE_RECEIVED, message)
 
     # message type 12
-    def _message_handler_PermissionDenied(self, payload):
+    def _message_handler_permission_denied(self, payload):
         message = mumble_pb2.PermissionDenied()
         message.ParseFromString(payload)
         type = message.DenyType.Name(message.type)
@@ -289,21 +289,21 @@ class Mumpy:
         self.log.debug(f'Permission denied. Type: {type}. Reason: {reason}')
 
     # message type 13
-    def _message_handler_ACL(self, payload):
+    def _message_handler_acl(self, payload):
         message = mumble_pb2.ACL()
         message.ParseFromString(payload)
         self.log.debug("Received message type 13")
         self.log.debug(message)
 
     # message type 14
-    def _message_handler_QueryUsers(self, payload):
+    def _message_handler_query_users(self, payload):
         message = mumble_pb2.QueryUsers()
         message.ParseFromString(payload)
         self.log.debug("Received message type 14")
         self.log.debug(message)
 
     # message type 15
-    def _message_handler_CryptSetup(self, payload):
+    def _message_handler_crypt_setup(self, payload):
         message = mumble_pb2.CryptSetup()
         message.ParseFromString(payload)
         if message.HasField('key'):
@@ -323,36 +323,36 @@ class Mumpy:
     # TODO: handle sending these to the server, what does this do?
 
     # message type 18
-    def _message_handler_UserList(self, payload):
+    def _message_handler_user_list(self, payload):
         message = mumble_pb2.UserList()
         message.ParseFromString(payload)
         self.registered_users = {user.user_id: user.name for user in message.users}
-        self._fire_event(MumpyEvent.REGISTERED_USER_LIST_RECEIVED, message)
+        self._fire_event(EventType.REGISTERED_USER_LIST_RECEIVED, message)
 
     # message type 19 -- VoiceTarget
     # not sent by server, no handler needed
 
     # message type 20
-    def _message_handler_PermissionQuery(self, payload):
+    def _message_handler_permission_query(self, payload):
         message = mumble_pb2.PermissionQuery()
         message.ParseFromString(payload)
         if message.flush:
             for channel in self.channels.values():
                 channel.permissions = None
         self.get_channel_by_id(message.channel_id).permissions = message.permissions
-        self._fire_event(MumpyEvent.CHANNEL_PERMISSIONS_UPDATED, message)
+        self._fire_event(EventType.CHANNEL_PERMISSIONS_UPDATED, message)
 
     # message type 21
-    def _message_handler_CodecVersion(self, payload):
+    def _message_handler_codec_version(self, payload):
         message = mumble_pb2.CodecVersion()
         message.ParseFromString(payload)
         if not message.opus:
             self.audio_enabled = False
             self.log.warning("Server does not support Opus, disabling audio")
-            self._fire_event(MumpyEvent.AUDIO_DISABLED, message)
+            self._fire_event(EventType.AUDIO_DISABLED, message)
 
     # message type 22
-    def _message_handler_UserStats(self, payload):
+    def _message_handler_user_stats(self, payload):
         message = mumble_pb2.UserStats()
         message.ParseFromString(payload)
         user = self.get_user_by_id(message.session)
@@ -367,13 +367,13 @@ class Mumpy:
             else:
                 ip = IPv6Address(bytes(ip)).compressed
             user.stats.address = ip
-        self._fire_event(MumpyEvent.USER_STATS_UPDATED, message)
+        self._fire_event(EventType.USER_STATS_UPDATED, message)
 
     # message type 23 -- RequestBlob
     # not sent by server, no handler needed
 
     # message type 24
-    def _message_handler_ServerConfig(self, payload):
+    def _message_handler_server_config(self, payload):
         message = mumble_pb2.ServerConfig()
         message.ParseFromString(payload)
         self.max_message_length = message.message_length
@@ -381,7 +381,7 @@ class Mumpy:
         self.server_allow_html = message.allow_html
 
     # message type 25
-    def _message_handler_SuggestConfig(self, payload):
+    def _message_handler_suggest_config(self, payload):
         # nothing important in this message type, maybe implement in the future
         pass
 
@@ -431,7 +431,7 @@ class Mumpy:
                 user.audio_log.append((time(), user.audio_buffer_dict))
                 user.audio_buffer = b''
                 user.audio_buffer_dict = {}
-                self._fire_event(MumpyEvent.AUDIO_TRANSMISSION_RECEIVED, user)
+                self._fire_event(EventType.AUDIO_TRANSMISSION_RECEIVED, user)
 
     def _encrypt(self, data):
         """
@@ -488,7 +488,7 @@ class Mumpy:
         self.udp_socket.settimeout(None)
         self.connection_state = ConnectionState.CONNECTED_UDP
         self.log.debug("Using UDP for audio traffic")
-        self._fire_event(MumpyEvent.UDP_CONNECTED)
+        self._fire_event(EventType.UDP_CONNECTED)
         while self.connection_state == ConnectionState.CONNECTED_UDP:
             inputs, outputs, exceptions = select.select([self.udp_socket], [], [])
             for input_socket in inputs:
@@ -508,7 +508,7 @@ class Mumpy:
                 except Exception:
                     self.log.error(f"Failed to handle UDP message. Exception: {traceback.format_exc()}")
         else:
-            self._fire_event(MumpyEvent.UDP_DISCONNECTED)
+            self._fire_event(EventType.UDP_DISCONNECTED)
 
     def _send_packet_udp(self, data):
         self.udp_socket.sendto(self._encrypt(data), (self.address, self.port))
@@ -548,7 +548,7 @@ class Mumpy:
                         self.log.warning(f'Caught exception ({e}) while handling message type {message_type}, '
                                          f'message = {message_payload}')
         else:
-            self._fire_event(MumpyEvent.DISCONNECTED)
+            self._fire_event(EventType.DISCONNECTED)
 
     def _fire_event(self, event_type, message=None):
         self.log.debug(f"Firing event type {event_type}")
@@ -584,10 +584,10 @@ class Mumpy:
                 kicker_session_id = raw_message.actor
                 reason = raw_message.reason
 
-            bot.add_event_handler(MumpyEvent.USER_KICKED, kick_handler_function)
+            bot.add_event_handler(EventType.USER_KICKED, kick_handler_function)
 
         Args:
-            event_type(str): an event from the :class:`~mumpy.constants.MumpyEvent` enum
+            event_type(str): an event from the :class:`~mumpy.constants.EventType` enum
             function_handle(function): the function to run when the specified event is fired
 
         Returns:
@@ -621,10 +621,10 @@ class Mumpy:
             self.audio_decoders = {AudioType.OPUS: opuslib.Decoder(48000, 1)}
             self.audio_encoders = {AudioType.OPUS: opuslib.Encoder(48000, 1, opuslib.APPLICATION_AUDIO)}
             self.audio_enabled = True
-            self._fire_event(MumpyEvent.AUDIO_ENABLED)
+            self._fire_event(EventType.AUDIO_ENABLED)
         except Exception:
             self.log.warning('Failed to initialize Opus audio codec. Disabling audio')
-            self._fire_event(MumpyEvent.AUDIO_DISABLED)
+            self._fire_event(EventType.AUDIO_DISABLED)
         self.connection_state = ConnectionState.CONNECTING
         self.log.debug(f"Connecting to {self.address}:{self.port}")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -687,14 +687,16 @@ class Mumpy:
     def channel_id(self):
         """
         Returns:
-            int: the ID of the channel the bot is currently in"""
+            int: the ID of the channel the bot is currently in
+        """
         return self.user.channel_id
 
     @property
     def channel(self):
         """
         Returns:
-            Channel: the Channel the bot is currently in."""
+            Channel: the Channel the bot is currently in.
+        """
         return self.get_channel_by_id(self.channel_id)
 
     def get_channel_by_id(self, channel_id):
@@ -875,7 +877,7 @@ class Mumpy:
         else:
             self._send_audio_packet_tcp(udp_packet)
         self.audio_sequence_number += 1
-        self._fire_event(MumpyEvent.AUDIO_TRANSMISSION_SENT)
+        self._fire_event(EventType.AUDIO_TRANSMISSION_SENT)
 
     def play_wav(self, filename):
         """
@@ -917,7 +919,7 @@ class Mumpy:
         if users:
             message_payload.session.extend([user.session_id for user in users])
         self._send_payload(MessageType.TEXTMESSAGE, message_payload)
-        self._fire_event(MumpyEvent.MESSAGE_SENT, message_payload)
+        self._fire_event(EventType.MESSAGE_SENT, message_payload)
 
     def ping(self, udp=False):
         """
