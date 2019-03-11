@@ -11,7 +11,7 @@ Contributing
 If you have any contributions to make, whether they are bug reports, feature requests, or even code, feel free to submit
 issues and pull requests `on Github`_.
 
-This repo uses Travis CI to run a Python style checker called flake8. This checker looks for errors in the code, as well
+This repo uses Travis CI to run a Python style checker called flake8, which looks for errors in the code, as well
 as deviations from the PEP8 style guide.
 
 In order to style check your code locally before pushing it to Github, you can run a command like the following, from
@@ -24,7 +24,7 @@ the root of the repo:
 We also ignore some of the flake8 style suggestions. Check the `Travis config file`_ in the repo to see exactly what
 flake8 command will get run on code pushed to the repo.
 
-.. _Travis config file: https://github.com/ianling/mumpy/
+.. _Travis config file: https://github.com/ianling/mumpy/blob/master/.travis.yml
 
 Building the Documentation
 --------------------------
