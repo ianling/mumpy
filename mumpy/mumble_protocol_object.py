@@ -16,6 +16,10 @@ class MumbleProtocolObject:
     def __str__(self):
         return self.name
 
+    @property
+    def server(self):
+        return self._server
+
     def update(self, message, prefix=None):
         """
         Uses a protobuf message to update the object's fields.
