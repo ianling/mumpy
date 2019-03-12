@@ -38,9 +38,9 @@ This example is a bot that echoes all text chat messages back to the original se
     from mumpy import Mumpy, EventType
     from time import sleep
 
-    def text_message_handler(mumpy_instance, raw_message):
-        sender = mumpy_instance.get_user_by_id(raw_message.actor)
-        message_body = raw_message.message
+    def text_message_handler(event):
+        sender = event.server.get_user_by_id(raw_message.actor)
+        message_body = event.raw_message.message
         mumpy_instance.text_message(message_body, users=(sender,))
 
     my_bot = Mumpy(username="MyBot")
@@ -53,18 +53,19 @@ This example is a bot that echoes all text chat messages back to the original se
 Play WAV File
 -------------
 
-This example is a bot that connects to a server, waits for the UDP socket to become established, and then immediately transmits a WAV file. At the moment, WAV files must be in 48kHz 16-bit format.
+This example is a bot that connects to a server, waits for the UDP socket to become established, and then immediately transmits a WAV file
+using the ``udp_connected_handler`` function. At the moment, WAV files must be in 48kHz 16-bit format.
 
 .. code:: python
 
     from mumpy import Mumpy, EventType
     from time import sleep
 
-    def udp_connected_handler(mumpy_instance, raw_message):
-        mumpy_instance.play_wav('/home/ian/some_sound.wav')
+    def udp_connected_handler(event):
+        event.server.play_wav('/home/ian/some_sound.wav')
 
     my_bot = Mumpy(username="MyBot")
-    my_bot.add_event_handler(MumpyEvent.UDP_CONNECTED, udp_connected_handler)
+    my_bot.add_event_handler(EventType.UDP_CONNECTED, udp_connected_handler)
     my_bot.connect('localhost')
 
     while my_bot.is_alive():
