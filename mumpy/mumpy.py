@@ -998,15 +998,15 @@ class Mumpy:
     def update_user_stats(self, user):
         """
         Queries the server for a User's stats.
-        This function does not return anything. The server's response may fire the following events:
-
-        - USER_STATS_UPDATED
 
         Args:
             user(User): the User to retrieve stats for
 
         Returns:
             None
+
+        Events:
+            - :obj:`.USER_STATS_UPDATED`
         """
         message_payload = mumble_pb2.UserStats()
         message_payload.session = user.session_id
@@ -1020,6 +1020,9 @@ class Mumpy:
             user_textures(iterable): a list of Users to retrieve textures for (Default value = ())
             user_comments(iterable): a list of Users to retrieve comments for (Default value = ())
             channel_descriptions(iterable): a list of Channels to retrieve descriptions for (Default value = ())
+
+        Returns:
+            None
 
         Events:
             - :obj:`.USER_COMMENT_UPDATED`
