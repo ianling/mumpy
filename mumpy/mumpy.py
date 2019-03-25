@@ -602,7 +602,7 @@ class Mumpy:
         """
         self._event_handlers[event_type].append(function_handle)
 
-    def connect(self, address, port=64738, certfile=None, keyfile=None, keypassword=None):
+    def connect(self, address, port=64738, certfile=None, keyfile=None, keypassword=None, timeout=30):
         """
         Starts the connection thread that connects to address:port.
         Optionally uses an SSL certificate in PEM format to identify the client.
@@ -613,6 +613,7 @@ class Mumpy:
             certfile(str, optional): the path to the SSL certificate file in PEM format (Default value = None)
             keyfile(str, optional): the path to the certificate's key file (Default value = None)
             keypassword(str, optional): the secret key used to unlock the key file (Default value = None)
+            timeout(int): timeout for initializing a connection
 
         Returns:
             None
@@ -645,9 +646,14 @@ class Mumpy:
         self._tcp_connection_thread = Thread(target=self._start_tcp_connection)
         self._tcp_connection_thread.start()
         # do not return from this method until the connection is fully established and usable, or it fails
+        connection_timer = 0
         while self._connection_state not in (ConnectionState.CONNECTED_UDP, ConnectionState.CONNECTED_NO_UDP,
                                              ConnectionState.DISCONNECTED):
             sleep(0.1)
+            connection_timer += 0.1
+            if connection_timer > timeout:
+                self._connection_state = ConnectionState.DISCONNECTED
+                raise TimeoutError(f"Failed to connect to {self._address}:{self._port} within {timeout} seconds")
 
     def disconnect(self):
         """
