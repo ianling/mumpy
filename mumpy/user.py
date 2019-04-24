@@ -136,6 +136,18 @@ class User(MumbleProtocolObject):
         """
         self._server.unregister_user(self)
 
+    def text_message(self, message):
+        """
+        Sends the user a private text message.
+
+        Args:
+            message(str): the message
+
+        Returns:
+            None
+        """
+        self._server.text_message(message, users=(self,))
+
     def update_stats(self):
         """
         Requests updated stats about the user from the server.

@@ -48,3 +48,15 @@ class Channel(MumbleProtocolObject):
             None
         """
         self._server.remove_channel(self)
+
+    def text_message(self, message):
+        """
+        Sends a text message to this channel.
+
+        Args:
+            message(str): the message
+
+        Returns:
+            None
+        """
+        self._server.text_message(message, channels=(self,))
