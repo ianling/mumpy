@@ -41,7 +41,7 @@ This example is a bot that echoes all text chat messages back to the original se
     def text_message_handler(event):
         sender = event.server.get_user_by_id(raw_message.actor)
         message_body = event.raw_message.message
-        mumpy_instance.text_message(message_body, users=(sender,))
+        sender.text_message(message_body)
 
     my_bot = Mumpy(username="MyBot")
     my_bot.add_event_handler(EventType.MESSAGE_RECEIVED, text_message_handler)  # add our function as a handler for MESSAGE_RECEIVED events
