@@ -4,6 +4,11 @@ import weakref
 class MumbleProtocolObject:
     def __init__(self, server, message=None):
         """
+        Generic object for storing information about various Mumble protocol objects,
+        such as users and channels.
+
+        This is a parent class and should not be instantiated directly.
+
         Args:
             server(Mumpy): the Mumpy instance that this object originated from
             message(protobuf message): the protobuf message that created this object
