@@ -24,7 +24,6 @@ Examples, API docs, and other documentation are all available over on [ReadTheDo
 ## To-do (in order of priority)
 
 * Fix audio crackling issue
-* Add additional methods for interacting with Users and Channels
 * Add remaining client protobuf message types (including ContextActionModify and ContextAction)
 * Allow sending other audio besides 48KHz 16-bit WAV/PCM
 * Add per-user audio storage limits
