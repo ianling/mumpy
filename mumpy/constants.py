@@ -287,7 +287,7 @@ class EventType(metaclass=MumpyEnum):
     """
 
 
-PROTOCOL_VERSION = (1, 2, 19)  # (major, minor, patch)
+PROTOCOL_VERSION = (1, 3, 0)  # (major, minor, patch)
 RELEASE_STRING = "MumPy 1.0b"
 OS_STRING = RELEASE_STRING
 OS_VERSION_STRING = "Python %s - %s %s" % (PYTHON_VERSION, platform.system(), platform.release())

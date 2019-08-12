@@ -114,7 +114,8 @@ class Mumpy:
             authenticate_response.opus = True
             self._send_payload(MessageType.AUTHENTICATE, authenticate_response)
         else:
-            self._log.error('Version mismatch! Our version is {}.{}.{}. Killing connection...'.format(*PROTOCOL_VERSION))
+            self._log.error('Version mismatch! Our version is {}.{}.{}, server version is {}.{}.{}. Killing connection...'.format(*PROTOCOL_VERSION, *server_version))
+            self.disconnect()
 
     # message type 1 -- UDPTunnel
     def _message_handler_udp_tunnel(self, payload):
@@ -136,7 +137,7 @@ class Mumpy:
         rejection_type = message.RejectType.Name(message.type)
         reason = message.reason
         self._log.error(f'Server rejected connection. Type: {rejection_type}. Reason: {reason}')
-        self._connection_state = ConnectionState.DISCONNECTED
+        self.disconnect()
 
     # message type 5
     def _message_handler_server_sync(self, payload):
@@ -184,7 +185,7 @@ class Mumpy:
         message = mumble_pb2.UserRemove()
         message.ParseFromString(payload)
         if message.session == self.session_id:
-            self._connection_state = ConnectionState.DISCONNECTED
+            self.disconnect()
         try:
             session_username = self.get_user(message.session).name
         except KeyError:
@@ -349,6 +350,7 @@ class Mumpy:
     def _message_handler_codec_version(self, payload):
         message = mumble_pb2.CodecVersion()
         message.ParseFromString(payload)
+        self._log.debug(f'Received codec version message from server: {message}')
         if not message.opus:
             self._audio_enabled = False
             self._log.warning("Server does not support Opus, disabling audio")
