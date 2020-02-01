@@ -21,7 +21,7 @@ import traceback
 import wave
 
 
-class Mumpy:
+class Client:
     def __init__(self, username="mumble-bot", password=""):
         self.username = username
         self.password = password

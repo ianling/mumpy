@@ -1,27 +1,32 @@
 Usage
 =====
 
-Mumpy is a fully-featured Mumble client that offers both an API for interacting with a Mumble server,
+Mumpy is both a fully-featured Mumble client and a server.
+As a client, it offers both an API for interacting with a Mumble server
 and an event-driven framework for reacting to various actions and situations as they occur.
 
-The API portion contains all the features you would expect from a Mumble client,
+This same API is offered from the server's perspective as well, and is also event-driven. This gives you full control
+over how the server behaves in any situation, and allows you to easily expand functionality beyond what is offered by the official
+Mumble server.
+
+The API contains all the features you would expect from Mumble,
 such as the ability to send and receive voice and text chat messages, kick/ban/mute/deafen users,
-create/edit/remove channels, and most everything else you can do in the official Mumble client.
+create/edit/remove channels, and most everything else you can do in the official Mumble client and server.
 
 .. code:: python
 
-    from mumpy import Mumpy
+    import mumpy
 
-    my_mumpy = Mumpy()
-    my_mumpy.connect('localhost', port=64738)
-    my_mumpy.text_message("I am sending a text chat message to my current channel.")
-    my_mumpy.kick_user("BadUser1337", reason="Not good.")
+    client = mumpy.Client()
+    client.connect('localhost', port=64738)
+    client.text_message("I am sending a text chat message to my current channel.")
+    client.kick_user("BadUser1337", reason="Not good.")
 
     # you can also interact with User and Channel objects in intuitive ways
-    bad_user = my_mumpy.get_user('BadUser1337')
+    bad_user = client.get_user('BadUser1337')
     bad_user.kick(ban=True)
 
-    my_current_channel = my_mumpy.channel
+    my_current_channel = client.channel
     my_current_channel.rename('New Channel Name')
 
 A full list of all the methods available can be found in the :ref:`api_reference` section of the documentation.
@@ -37,7 +42,7 @@ Event handlers should always accept one parameter, an :class:`.Event` object.
 This object will contain a number of attributes that provide more information about the event that occurred, such as:
 
 * ``.type`` - the type of event, from the :class:`.EventType` enum
-* ``.server`` - the :class:`.Mumpy` instance that the event originated from
+* ``.server`` - the :class:`.Client` instance that the event originated from
 * ``.raw_message`` - the raw protobuf message object that caused the event to fire.
                      The fields you can expect to see in each protobuf message type are
                      documented in the `official Mumble client's protobuf definition file`_
@@ -51,10 +56,10 @@ Example event handler for the :obj:`.USER_KICKED` event.
         victim = event.server.get_user(raw_message.session)
         print(f"{kicker.name} kicked {victim.name} from the server!")
 
-    my_mumpy.add_event_handler(EventType.USER_KICKED, kick_event_handler)
+    my_client.add_event_handler(EventType.USER_KICKED, kick_event_handler)
 
 Many parts of Mumpy operate asynchronously, so some of the functions do not return values themselves.
-For example, when you call the :py:meth:`.Mumpy.update_user_stats` method,
+For example, when you call the :py:meth:`.Client.update_user_stats` method,
 a request for the user's stats is sent to the server. The server will eventually
 (usually within milliseconds) respond, which will trigger the
 :obj:`.USER_STATS_UPDATED` event,
@@ -83,8 +88,16 @@ when connecting to a server:
 
 .. code:: python
 
-    my_mumpy = Mumpy()
-    my_mumpy.connect('localhost', certfile='mumpy_certificate.pem', keyfile='mumpy_key.pem')
+    import mumpy
+    my_client = mumpy.Client()
+    my_client.connect('localhost', certfile='mumpy_certificate.pem', keyfile='mumpy_key.pem')
+
+Likewise, the server portion of Mumpy must provide a certificate identifying itself to clients when they connect.
+
+.. code:: python
+
+    import mumpy
+    my_server = mumpy.Server('server_certificate.pem', 'server_key.pem')
 
 .. _logging:
 
